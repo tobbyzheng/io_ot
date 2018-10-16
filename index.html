@@ -34,6 +34,7 @@
 	<script src="libs/evothings/ui/ui.js"></script>
 	<script src="libs/evothings/easyble/easyble.js"></script>
 	<script src="app.js"></script>
+	<script src="avatar.js"></script>
 
 </head>
 
@@ -62,15 +63,16 @@
 	</header>
 
 	<h1>TI SensorTag Dual Demo</h1>
-	<a href="trial.html">test newby library</a>
 
 	<p id="info">Not initialized</p>
 
 	<button onclick="app.onStartButton()" class="green">START</button>
 	<button onclick="app.onStopButton()" class="red">STOP</button>
+	<button onclick="onShowAvatarButton()">Show Avatar</button>
 
 	<canvas id="canvas0" width="300" height="150"></canvas>
 	<canvas id="canvas1" width="300" height="150"></canvas>
+
 
 	<section id='information'>
 		<h2>Info</h2>
