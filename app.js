@@ -9,6 +9,7 @@ var app = {};
  * Timeout (ms) after which a message is shown if the SensorTag wasn't found.
  */
 app.CONNECT_TIMEOUT = 3000;
+app.NUM_DEVICES = 5;
 
 /**
  * Object that holds SensorTag UUIDs.
@@ -136,13 +137,15 @@ app.startScan = function()
 				app.showInfo('Status: Device found: ' + device.name + '.');
 				console.log(JSON.stringify(device.advertisementData));
 				var s = device.advertisementData.kCBAdvDataServiceUUIDs;
-				if(s && s[0] == "0000aa80-0000-1000-8000-00805f9b34fb") {
+				var name = device.advertisementData.kCBAdvDataLocalName;
+				if(name == "CC2650 SensorTag") {
+				//if(s && s[0] == "0000aa80-0000-1000-8000-00805f9b34fb") {
 					app.cc2650.devices.push(device);
-					console.log(app.cc2650.devices.length);
+					console.log("detected devices: "+app.cc2650.devices.length);
 				} else {
-					app.cc2541.device = device;
+					//app.cc2541.device = device;
 				}
-				if (app.cc2650.devices.length == 2) { //&& app.cc2541.device) {
+				if (app.cc2650.devices.length == app.NUM_DEVICES) { //&& app.cc2541.device) {
 					evothings.easyble.stopScan();
 					app.stopConnectTimer();
 					var i;
@@ -164,7 +167,9 @@ app.startScan = function()
 
 app.deviceIsSensorTag = function(device)
 {
-	console.log('device name: ' + device.name);
+	if (device.name) {
+		console.log('device name: ' + device.name);
+	}
 	return (device != null) &&
 		(device.name != null) &&
 		(device.name.indexOf('Sensor Tag') > -1 ||
@@ -279,7 +284,9 @@ app.startCC2650AccelerometerNotification = function(device)
 			app.showInfo('Status: data stream active');
 			var dataArray = new Uint8Array(data);
 			var values = app.getCC2650AccelerometerValues(dataArray);
-			app.drawDiagram(values, device.index, app.cc2650.dataPoints[device.index]);
+			var datalist = app.cc2650.dataPoints[device.index];
+			app.drawDiagram(values, device.index, datalist);
+			//console.log("data length of "+device.index+": "+datalist.length);
 		},
 		function(errorCode)
 		{
