@@ -1,0 +1,8 @@
+initScene()
+    - initBones()
+        - createGeometry()
+        - createBones()
+        - createMesh()
+    - setupDatGui()
+
+render()
