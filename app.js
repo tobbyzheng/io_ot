@@ -13,7 +13,7 @@ app.sleep = (milliseconds) => {
  * Timeout (ms) after which a message is shown if the SensorTag wasn't found.
  */
 app.CONNECT_TIMEOUT = 3000;
-app.NUM_DEVICES = 2;
+app.NUM_DEVICES = 1;
 app.TYPE_ACC = 0;
 app.TYPE_GYR = 1;
 app.DIAGRAM_SCALER = [2, 255];
@@ -62,10 +62,10 @@ app.initialize = function()
 	$(document).ready( function()
 	{
 		// Adjust canvas size when browser resizes
-		$(window).resize(app.respondCanvas);
+		// $(window).resize(app.respondCanvas);
 
 		// Adjust the canvas size when the document has loaded.
-		app.respondCanvas();
+		// app.respondCanvas();
 	});
 };
 
@@ -90,7 +90,7 @@ app.showInfo = function(info)
 	if(app.info != info) {
 		app.info = info;
 		console.log(info);
-		document.getElementById('info').innerHTML = info;
+		// document.getElementById('info').innerHTML = info;
 	}
 };
 
@@ -303,9 +303,23 @@ app.startCC2650AccelerometerNotification = function(device)
 			var dataArray = new Uint8Array(data);
 			var acc_vals = app.getCC2650AccelerometerValues(dataArray);
 			var gyr_vals = app.getCC2650GyroscopeValues(dataArray);
+            // add to device.enableNotification()
+            var mag_vals = app.getCC2650MagnetometerValues(dataArray);
+            // the values are mag_vals.x, .y, .z
+            if (gi < higher) return;
 
-			app.drawDiagram(app.TYPE_ACC, acc_vals, device.index, app.cc2650.dataPoints);
-			app.drawDiagram(app.TYPE_GYR, gyr_vals, device.index, app.cc2650.dataPoints);
+                // mahonyAHRSupdateIMU(gy, -gx, gz,
+								  // acc_vals.y, -acc_vals.x, acc_vals.z); 
+            madgwickAHRSupdate(gyr_vals.x, gyr_vals.y, gyr_vals.z, acc_vals.x, acc_vals.y, acc_vals.z , mag_vals.x, mag_vals.y, mag_vals.z);
+                // mahonyAHRSupdate(gy, -gx, gz, acc_vals.y, -acc_vals.x, acc_vals.z, mag_vals.y, -mag_vals.x, mag_vals.z);
+                // mahonyAHRSupdate(gy, -gx, gz, gyr_vals.y, -gyr_vals.x, gyr_vals.z, mag_vals.y, -mag_vals.x, mag_vals.z);
+                // madgwickAHRSupdateIMU(to_ms2(gy), -to_ms2(gx), to_ms2(gz),
+								      // to_ms2(acc_vals.y), -to_ms2(acc_vals.x), to_ms2(acc_vals.z));
+            // }
+			// console.log("q0="+q0+" q1="+q1+" q2="+q2+" q3="+q3);
+
+			// app.drawDiagram(app.TYPE_ACC, acc_vals, device.index, app.cc2650.dataPoints);
+			// app.drawDiagram(app.TYPE_GYR, gyr_vals, device.inde x, app.cc2650.dataPoints);
 			//console.log("data length of "+device.index+": "+datalist.length);
 		},
 		function(errorCode)
@@ -313,6 +327,29 @@ app.startCC2650AccelerometerNotification = function(device)
 			console.log('Error: enableNotification: ' + errorCode + '.');
 		});
 };
+
+var cur_px = 0;
+var cur_py = 0;
+var cur_pz = 0;
+
+var cur_sx = 0;
+var cur_sy = 0;
+var cur_sz = 0;
+
+var cur_ax = 0;
+var cur_ay = 0;
+var cur_az = 0;
+
+var old_time = 0;
+
+var slow_print_cnt = 0;
+var ggx = 0;
+var ggy = 0;
+var ggz = 0;
+var to_test = 0;
+var lower = 50;
+var higher = 150;
+var to_ms2 = (x) => {return x * (-9.81);};
 
 /**
  * Calculate accelerometer values from raw data for SensorTag 2.
@@ -327,6 +364,44 @@ app.getCC2650AccelerometerValues = function(data)
 	var ax = evothings.util.littleEndianToInt16(data, 6) / divisors.x;
 	var ay = evothings.util.littleEndianToInt16(data, 8) / divisors.y;
 	var az = evothings.util.littleEndianToInt16(data, 10) / divisors.z;
+
+
+    // if (to_test < higher) {
+    //     console.log("TEST " + to_test);
+    //     if (to_test < lower) {
+    //         to_test++;
+	//         return { x: ax, y: ay, z: az };
+    //     }
+    //     ggx = (ggx * (to_test - lower) + ax) / (to_test+1 - lower);
+    //     ggy = (ggy * (to_test - lower) + ay) / (to_test+1 - lower);
+    //     ggz = (ggz * (to_test - lower) + az) / (to_test+1 - lower);
+    //     to_test++;
+	//     return { x: ax, y: ay, z: az };
+    // }
+
+    // cur_ax = to_ms2(ax-ggx);
+    // cur_ay = to_ms2(ay-ggy);
+    // cur_az = to_ms2(az-ggz);
+
+
+    // var curr_time = (new Date()).getTime();
+    // if (old_time != 0) {
+    //     let diffTime = curr_time - old_time;
+    //     cur_px += cur_sx * diffTime / 1000;
+    //     cur_py += cur_sy * diffTime / 1000;
+    //     cur_pz += cur_sz * diffTime / 1000;
+
+    //     cur_sx += cur_ax * diffTime / 1000;
+    //     cur_sy += cur_ay * diffTime / 1000;
+    //     cur_sz += cur_az * diffTime / 1000;
+    // }
+
+    // old_time = curr_time;
+
+    // if (slow_print_cnt++ % 10 == 0) {
+        // console.log(cur_px + " " + cur_py + " " + cur_pz + "/ " + cur_az);
+    // }
+
 	/*if (ax > app.max_ax) {
 		app.max_ax = ax;
 	}
@@ -340,14 +415,36 @@ app.getCC2650AccelerometerValues = function(data)
 	return { x: ax, y: ay, z: az };
 };
 
+var avg_x = 0;
+var avg_y = 0;
+var avg_z = 0;
+var gi = 0;
+// var to_rad = (x) => {return x/360.0 * 3.1415926 * 2};
+var to_rad = (x) => {return x/6.0};
+
 app.getCC2650GyroscopeValues = function(data) {
 	// Calculate gyroscope values.
-	var gx = evothings.util.littleEndianToInt16(data, 0) * 255.0 / 32768.0
-	var gy = evothings.util.littleEndianToInt16(data, 2) * 255.0 / 32768.0
-	var gz = evothings.util.littleEndianToInt16(data, 4) * 255.0 / 32768.0
+	var gx = evothings.util.littleEndianToInt16(data, 0) * 255.0 / 32768.0;
+	var gy = evothings.util.littleEndianToInt16(data, 2) * 255.0 / 32768.0;
+	var gz = evothings.util.littleEndianToInt16(data, 4) * 255.0 / 32768.0;
+    if (gi < higher) {
+        console.log(gi);
+        if (gi < lower) {
+            gi++;
+	         // return { x: gx, y: gy, z: gz }
+	        return { x: 0, y: 0, z: 0}
+        }
+        avg_x = ((gi - lower) * avg_x + gx)/(gi - lower + 1);
+        avg_y = ((gi - lower) * avg_y + gy)/(gi - lower+ 1);
+        avg_z = ((gi - lower) * avg_z + gz)/(gi  - lower+ 1);
+        gi++;
+	    return { x: 0, y: 0, z: 0}
+    }
 
 	// Return result.
-	return { x: gx, y: gy, z: gz }
+	return { x: to_rad(gx-avg_x),
+             y: to_rad(gy-avg_y),
+             z: to_rad(gz-avg_z) };
 }
 
 
@@ -376,7 +473,7 @@ app.startCC2541AccelerometerNotification = function(device)
 	// Set accelerometer period to 100 ms.
 	device.writeCharacteristic(
 		app.cc2541.ACCELEROMETER_PERIOD ,
-		new Uint8Array([10]),
+		new Uint8Array([20]),
 		function()
 		{
 			console.log('Status: writeCharacteristic ok.');
@@ -439,6 +536,15 @@ app.getCC2541AccelerometerValues = function(data)
 	return { x: ax, y: ay, z: az };
 };
 
+// add this function somewhere
+// unit is uT, max range can be -4900 to +4900
+app.getCC2650MagnetometerValues = function(data) {
+	// Magnetometer values (Micro Tesla).
+	var mx = evothings.util.littleEndianToInt16(data, 12) * (4912.0 / 32768.0);
+	var my = evothings.util.littleEndianToInt16(data, 14) * (4912.0 / 32768.0);
+	var mz = evothings.util.littleEndianToInt16(data, 16) * (4912.0 / 32768.0);
+	return { x: mx, y: my, z: mz };
+}
 /**
  * Plot diagram of sensor values.
  * Values plotted are expected to be between -1 and 1
