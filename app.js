@@ -13,7 +13,10 @@ app.sleep = (milliseconds) => {
  * Timeout (ms) after which a message is shown if the SensorTag wasn't found.
  */
 app.CONNECT_TIMEOUT = 3000;
-app.NUM_DEVICES = 5;
+app.NUM_DEVICES = 2;
+app.TYPE_ACC = 0;
+app.TYPE_GYR = 1;
+app.DIAGRAM_SCALER = [2, 255];
 
 /**
  * Object that holds SensorTag UUIDs.
@@ -41,6 +44,9 @@ app.cc2650.MOVEMENT_NOTIFICATION = '00002902-0000-1000-8000-00805f9b34fb';
 
 app.cc2650.dataPoints = [];
 app.cc2650.devices = [];
+
+app.max_ax = 0;
+app.min_ax = 0;
 
 /**
  * Initialise the application.
@@ -150,12 +156,12 @@ app.startScan = function()
 					//app.cc2541.device = device;
 				}
 				if (app.cc2650.devices.length == app.NUM_DEVICES) { //&& app.cc2541.device) {
-					evothings.easyble.stopScan();
+                    evothings.easyble.stopScan();
 					app.stopConnectTimer();
 					var i, start;
 					for (i = 0; i < app.cc2650.devices.length; i++) {
 						app.cc2650.devices[i].index = i;
-						app.cc2650.dataPoints.push([]);
+						app.cc2650.dataPoints.push([[], []]);
 						app.connectToDevice(app.cc2650.devices[i]);
 						//app.sleep(500).then();
 						//start = new Date().getTime();
@@ -172,6 +178,7 @@ app.startScan = function()
 		function(errorCode)
 		{
 			app.showInfo('Error: startScan: ' + errorCode + '.');
+			// TODO: add restart
 		});
 };
 
@@ -245,7 +252,7 @@ app.startCC2650AccelerometerNotification = function(device)
 	// 3-axis acc. + 3-axis gyro + magnetometer on: 127 (1111111)
 	device.writeCharacteristic(
 		app.cc2650.MOVEMENT_CONFIG,
-		new Uint8Array([56,0]),
+		new Uint8Array([63,0]),
 		function()
 		{
 			console.log('Status: writeCharacteristic ok.');
@@ -294,10 +301,11 @@ app.startCC2650AccelerometerNotification = function(device)
 		{
 			app.showInfo('Status: data stream active');
 			var dataArray = new Uint8Array(data);
-			var values = app.getCC2650AccelerometerValues(dataArray);
-			var datalist = app.cc2650.dataPoints[device.index];
+			var acc_vals = app.getCC2650AccelerometerValues(dataArray);
+			var gyr_vals = app.getCC2650GyroscopeValues(dataArray);
 
-			app.drawDiagram(values, device.index, datalist);
+			app.drawDiagram(app.TYPE_ACC, acc_vals, device.index, app.cc2650.dataPoints);
+			app.drawDiagram(app.TYPE_GYR, gyr_vals, device.index, app.cc2650.dataPoints);
 			//console.log("data length of "+device.index+": "+datalist.length);
 		},
 		function(errorCode)
@@ -319,10 +327,29 @@ app.getCC2650AccelerometerValues = function(data)
 	var ax = evothings.util.littleEndianToInt16(data, 6) / divisors.x;
 	var ay = evothings.util.littleEndianToInt16(data, 8) / divisors.y;
 	var az = evothings.util.littleEndianToInt16(data, 10) / divisors.z;
-
+	/*if (ax > app.max_ax) {
+		app.max_ax = ax;
+	}
+	if (ax < app.min_ax) {
+		app.min_ax = ax;
+	}
+	console.log("max gx="+app.max_ax);
+	console.log("min gx="+app.min_ax);
+	*/
 	// Return result.
 	return { x: ax, y: ay, z: az };
 };
+
+app.getCC2650GyroscopeValues = function(data) {
+	// Calculate gyroscope values.
+	var gx = evothings.util.littleEndianToInt16(data, 0) * 255.0 / 32768.0
+	var gy = evothings.util.littleEndianToInt16(data, 2) * 255.0 / 32768.0
+	var gz = evothings.util.littleEndianToInt16(data, 4) * 255.0 / 32768.0
+
+	// Return result.
+	return { x: gx, y: gy, z: gz }
+}
+
 
 /**
  * Read accelerometer data.
@@ -385,7 +412,7 @@ app.startCC2541AccelerometerNotification = function(device)
 			app.showInfo('Status: data stream active');
 			var dataArray = new Uint8Array(data);
 			var values = app.getCC2541AccelerometerValues(dataArray);
-			app.drawDiagram(values, 1, app.cc2541.dataPoints);
+			//app.drawDiagram(values, 1, app.cc2541.dataPoints);
 		},
 		function(errorCode)
 		{
@@ -417,13 +444,26 @@ app.getCC2541AccelerometerValues = function(data)
  * Values plotted are expected to be between -1 and 1
  * and in the form of objects with fields x, y, z.
  */
-app.drawDiagram = function(values, id, dataPoints)
+app.drawDiagram = function(type, values, id, device_data)
 {
 	//console.log("Device "+id+" is drawing");
-	var canvas = document.getElementById('canvas'+id);
+	var canvas_prefix = '';
+	switch (type) {
+		case app.TYPE_ACC:
+			canvas_prefix = 'acc';
+			break;
+		case app.TYPE_GYR:
+			canvas_prefix = 'gyr';
+			break;
+	}
+	if (canvas_prefix == '') {
+		return;
+	}
+	var canvas = document.getElementById(canvas_prefix+id);
 	var context = canvas.getContext('2d');
 
 	// Add recent values.
+	var dataPoints = device_data[id][type];
 	dataPoints.push(values);
 
 	// Remove data points that do not fit the canvas.
@@ -432,12 +472,12 @@ app.drawDiagram = function(values, id, dataPoints)
 		dataPoints.splice(0, (dataPoints.length - canvas.width));
 	}
 
-	// Value is an accelerometer reading between -1 and 1.
+	// Value range: acc [-2, 2], gyr [-255, 255]
 	function calcDiagramY(value)
 	{
 		// Return Y coordinate for this value.
 		var diagramY =
-			((value * canvas.height) / 2)
+			((value / app.DIAGRAM_SCALER[type] * canvas.height) / 2)
 			+ (canvas.height / 2);
 		return diagramY;
 	}
