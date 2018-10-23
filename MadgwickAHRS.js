@@ -24,7 +24,6 @@ var betaDef    =  1;   // 2 * proportional gain
 // Variable definitions
 
 var beta = betaDef;                         // 2 * proportional gain (Kp)
-var q0 = 1.0, q1 = 0.0, q2 = 0.0, q3 = 0.0; // quaternion of sensor frame relative to auxiliary frame
 console.log("Madgwick here");
 
 
@@ -34,6 +33,7 @@ console.log("Madgwick here");
 //---------------------------------------------------------------------------------------------------
 // IMU algorithm update
 function madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az) {
+    var q0 = 1.0, q1 = 0.0, q2 = 0.0, q3 = 0.0; // quaternion of sensor frame relative to auxiliary frame
     var recipNorm;
     var s0, s1, s2, s3;
     var qDot1, qDot2, qDot3, qDot4;
@@ -105,6 +105,7 @@ function madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az) {
 // AHRS algorithm update
 
 function madgwickAHRSupdate(gx, gy, gz, ax, ay, az, mx, my, mz) {
+    var q0 = 1.0, q1 = 0.0, q2 = 0.0, q3 = 0.0; // quaternion of sensor frame relative to auxiliary frame
     var recipNorm;
     var s0, s1, s2, s3;
     var qDot1, qDot2, qDot3, qDot4;
@@ -199,6 +200,7 @@ function madgwickAHRSupdate(gx, gy, gz, ax, ay, az, mx, my, mz) {
     q1 *= recipNorm;
     q2 *= recipNorm;
     q3 *= recipNorm;
+    return {q0: q0, q1: q1, q2: q2, q3: q3};
 }
 
 //====================================================================================================
