@@ -5,6 +5,10 @@
  */
 var app = {};
 
+app.sleep = (milliseconds) => {
+	return new Promise(resolve => setTimeout(resolve, milliseconds))
+};
+
 /**
  * Timeout (ms) after which a message is shown if the SensorTag wasn't found.
  */
@@ -148,11 +152,17 @@ app.startScan = function()
 				if (app.cc2650.devices.length == app.NUM_DEVICES) { //&& app.cc2541.device) {
 					evothings.easyble.stopScan();
 					app.stopConnectTimer();
-					var i;
+					var i, start;
 					for (i = 0; i < app.cc2650.devices.length; i++) {
 						app.cc2650.devices[i].index = i;
 						app.cc2650.dataPoints.push([]);
 						app.connectToDevice(app.cc2650.devices[i]);
+						//app.sleep(500).then();
+						//start = new Date().getTime();
+						//console.log(i+" before: "+start);
+						//while (new Date().getTime() - start < 2000);
+						//console.log(i+" after: "+new Date().getTime());
+
 					}
 					//app.connectToDevice(app.cc2650.device);
 					//app.connectToDevice(app.cc2541.device);
@@ -274,6 +284,7 @@ app.startCC2650AccelerometerNotification = function(device)
 			// to use the configuration descriptor explicitly. It should be
 			// safe to ignore this error.
 			console.log('Error: writeDescriptor: ' + errorCode + '.');
+			console.log("uuid map: "+device.__uuidMap);
 		});
 
 	// Start accelerometer notification.
@@ -285,6 +296,7 @@ app.startCC2650AccelerometerNotification = function(device)
 			var dataArray = new Uint8Array(data);
 			var values = app.getCC2650AccelerometerValues(dataArray);
 			var datalist = app.cc2650.dataPoints[device.index];
+
 			app.drawDiagram(values, device.index, datalist);
 			//console.log("data length of "+device.index+": "+datalist.length);
 		},
@@ -407,6 +419,7 @@ app.getCC2541AccelerometerValues = function(data)
  */
 app.drawDiagram = function(values, id, dataPoints)
 {
+	//console.log("Device "+id+" is drawing");
 	var canvas = document.getElementById('canvas'+id);
 	var context = canvas.getContext('2d');
 
