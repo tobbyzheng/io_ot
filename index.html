@@ -33,7 +33,9 @@
 	<script src="libs/evothings/evothings.js"></script>
 	<script src="libs/evothings/ui/ui.js"></script>
 	<script src="libs/evothings/easyble/easyble.js"></script>
+	<script src="libs/pixijs/pixi.js"></script>
 	<script src="app.js"></script>
+	<script src="avatar.js"></script>
 
 </head>
 
@@ -70,12 +72,15 @@
 
 	<button onclick="app.onStartButton()" class="green">START</button>
 	<button onclick="app.onStopButton()" class="red">STOP</button>
-
+	<button onclick="onToggleAvatarButton()">Show Avatar</button>
+	<div id="avatar-animation" width="256" height="256" style="display:none;"></div>
+	<br>
 	<canvas id="canvas0" width="300" height="150"></canvas>
 	<canvas id="canvas1" width="300" height="150"></canvas>
 	<canvas id="canvas2" width="300" height="150"></canvas>
 	<canvas id="canvas3" width="300" height="150"></canvas>
 	<canvas id="canvas4" width="300" height="150"></canvas>
+
 
 	<section id='information'>
 		<h2>Info</h2>
