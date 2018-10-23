@@ -55,7 +55,7 @@
 
 			//(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='js/stats.min.js';document.head.appendChild(script);})()
             var scene, camera, renderer, orbit, lights, mesh, skeletonHelper;
-
+			var bones = [20, 39]; // upper arms
 			/*var state = {
 				animateBones : true
 			};*/
@@ -181,7 +181,27 @@
 			    console.log("q1"+q1);
 			    console.log(skeletonHelper.bones[21]);
                 skeletonHelper.bones[21].applyQuaternion(q1);
-            }
+			}
+			
+			function updateBone(id, q) {
+				skeletonHelper.bones[bones[id]].quaternion.set(q.q1, q.q2, q.q3, q.q0);
+				//var newQ = new THREE.Quaternion(q.q1, q.q2, q.q3, q.q0);
+                //skeletonHelper.bones[bones[id]].applyQuaternion(newQ);
+			}
+
+			function resetBones() {
+				// relax shoulders
+				skeletonHelper.bones[19].position.set(0, -3.1, -2.466);
+				skeletonHelper.bones[19].rotation.set(-1.9, -0.2, 3.14);
+				skeletonHelper.bones[38].position.set(0, 3.1, -2.466);
+				skeletonHelper.bones[38].rotation.set(1.9, -0.2, -3.14);
+
+				// put arms down
+				skeletonHelper.bones[20].position.set(2.1, 0, -16.3);
+				skeletonHelper.bones[20].rotation.set(1.2, -0.1, -0.25);
+				skeletonHelper.bones[39].position.set(2.1, 0, -16.3);
+				skeletonHelper.bones[39].rotation.set(-1.2, -0.1, 0.25);
+			}
 
 			/*function showFPS() {
 				var fpsbutton = document.getElementById('fps_button');

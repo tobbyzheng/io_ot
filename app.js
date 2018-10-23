@@ -77,6 +77,8 @@ app.reset_vars = function() {
 	app.gi = [];
 	app.lower = [];
 	app.higher = [];
+
+	app.quarternions = [];
 }
 
 /**
@@ -107,7 +109,6 @@ app.showInfo = function(info)
 app.onStartButton = function()
 {
 	app.onStopButton();
-	app.reset_vars();
 	app.startScan();
 	app.showInfo('Status: Scanning...');
 	app.startConnectTimer();
@@ -119,6 +120,8 @@ app.onStopButton = function()
 	app.stopConnectTimer();
 	evothings.easyble.stopScan();
 	evothings.easyble.closeConnectedDevices();
+	app.reset_vars();
+	//resetBones();
 	app.showInfo('Status: Stopped.');
 };
 
@@ -180,6 +183,7 @@ app.startScan = function()
 						app.gi.push(0);
 						app.lower.push(50);
 						app.higher.push(150);
+						app.quarternions.push({q0: 1.0, q1: 0.0, q2: 0.0, q3: 0.0});
 						//app.sleep(500).then();
 						//start = new Date().getTime();
 						//console.log(i+" before: "+start);
@@ -327,17 +331,17 @@ app.startCC2650AccelerometerNotification = function(device)
 			//					acc_vals.x, acc_vals.y, acc_vals.z);
 
 			if (app.gi[id] < app.higher[id]) return;
-			console.log("Device "+id+" : Got enough data for madgwick");
+			//console.log("Device "+id+" : Got enough data for madgwick");
 			/*
 			console.log('gyr: '+gyr_vals.x+' '+gyr_vals.y+' '+gyr_vals.z); 
 			console.log('acc: '+acc_vals.x+' '+acc_vals.y+' '+acc_vals.z); 
 			console.log('mag: '+mag_vals.x+' '+mag_vals.y+' '+mag_vals.z);
 			*/
-			var q = madgwickAHRSupdate(gyr_vals.x, gyr_vals.y, gyr_vals.z, 
-							acc_vals.x, acc_vals.y, acc_vals.z , 
-							mag_vals.x, mag_vals.y, mag_vals.z);
+			var q = madgwickAHRSupdate(app.quarternions[id], gyr_vals, acc_vals, mag_vals);
 			if (q) {
 				console.log("Device "+id+": q0="+q.q0+" q1="+q.q1+" q2="+q.q2+" q3="+q.q3);
+				app.quarternions[id] = q;
+				updateBone(id, q);
 			}
 
 			//app.drawDiagram(app.TYPE_ACC, acc_vals, device.index, app.cc2650.dataPoints);
