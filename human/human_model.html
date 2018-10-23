@@ -40,6 +40,7 @@
 
 				orbit = new THREE.OrbitControls(camera, renderer.domElement);
 				orbit.enableZoom = true;
+				orbit.target.set(0, 3000, 0);
 
 				lights = [];
 				lights[0] = new THREE.DirectionalLight( 0xffffff, 1 );
@@ -113,36 +114,66 @@
                     scene.add(mesh);
 
                     skeletonHelper = new THREE.SkeletonHelper(mesh);
-					//skeletonHelper.material.linewidth = 2;
+					skeletonHelper.material.linewidth = 2;
 					scene.add(skeletonHelper);
 				});
 			}
 
 			function onChangeBoneX() {
 				console.log(skeletonHelper.bones.length);
-				skeletonHelper.bones[21].rotation.x =  -Math.PI * 0.5;
+				skeletonHelper.bones[19].rotation.x =  -Math.PI * 0.5;
 			}
             function onChangeBoneY() {
                 console.log(skeletonHelper.bones.length);
-                skeletonHelper.bones[21].rotation.y = -Math.PI * 0.5;
+                skeletonHelper.bones[19].rotation.y = -Math.PI * 0.5;
             }
 
             function onChangeBoneZ() {
                 console.log(skeletonHelper.bones.length);
-                skeletonHelper.bones[21].rotation.z = -Math.PI * 0.5;
+                skeletonHelper.bones[19].rotation.z = -Math.PI * 0.5;
             }
 
 			function testQuaternion() {
-			    console.log(skeletonHelper.bones[21].quaternion.x);
-                console.log(skeletonHelper.bones[21].quaternion.y);
-                console.log(skeletonHelper.bones[21].quaternion.z);
-                console.log(skeletonHelper.bones[21].quaternion.w);
+                /*console.log("20th bone postions below");
+			    console.log(skeletonHelper.bones[20].position.x);
+                console.log(skeletonHelper.bones[20].position.y);
+                console.log(skeletonHelper.bones[20].position.z);
+                console.log(skeletonHelper.bones[20].rotation.x);
+                console.log(skeletonHelper.bones[20].rotation.y);
+                console.log(skeletonHelper.bones[20].rotation.z);
+                console.log("39th bone postions below");
+                console.log(skeletonHelper.bones[39].position.x);
+                console.log(skeletonHelper.bones[39].position.y);
+                console.log(skeletonHelper.bones[39].position.z);
+                console.log(skeletonHelper.bones[39].rotation.x);
+                console.log(skeletonHelper.bones[39].rotation.y);
+                console.log(skeletonHelper.bones[39].rotation.z);*/
+                skeletonHelper.bones[38].rotation.x = 1.9;
+                skeletonHelper.bones[19].rotation.x = -1.9;
+                skeletonHelper.bones[39].position.x += 2.1;
+                skeletonHelper.bones[20].position.x += 2.1;
+                skeletonHelper.bones[39].rotation.x = - 1.2;
+                skeletonHelper.bones[39].rotation.y = -0.1;
+                skeletonHelper.bones[20].rotation.x = 1.2;
+                skeletonHelper.bones[20].rotation.y = -0.1;
 
-			    var q1 = new THREE.Quaternion(0.1, -1, -0.2, -2);
-			    console.log("q1"+q1);
-			    console.log(skeletonHelper.bones[21]);
-                skeletonHelper.bones[21].applyQuaternion(q1);
+                console.log("19");
+                console.log(skeletonHelper.bones[19].position);
+                console.log(skeletonHelper.bones[19].rotation);
+                console.log("20");
+                console.log(skeletonHelper.bones[20].position);
+                console.log(skeletonHelper.bones[20].rotation);
+                console.log("38");
+                console.log(skeletonHelper.bones[38].position);
+                console.log(skeletonHelper.bones[38].rotation);
+                console.log("39");
+                console.log(skeletonHelper.bones[39].position);
+                console.log(skeletonHelper.bones[39].rotation);
+			    //var q1 = new THREE.Quaternion(-0.174867, -0.135915, 0.128322, 0.980842);
+			    //console.log("q1: "+q1);
+                //skeletonHelper.bones[39].applyQuaternion(q1);
             }
+
 
 			/*function showFPS() {
 				var fpsbutton = document.getElementById('fps_button');
