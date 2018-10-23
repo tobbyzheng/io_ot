@@ -9,12 +9,16 @@
 	</head>
 	<body>
 
-		<button onClick="onChangeBone()">Click me</button>
 		<script src="three.js"></script>
 		<script src="js/OrbitControls.js"></script>
-
+		<script src="js/stats.min.js"></script>
+		<div id="human-robot"></div>
+		<button onClick="onChangeBone()">Click me</button>
+		<button id="fps_button" onClick="showFPS()">FPS</button>
 		<script>
-            var gui, scene, camera, renderer, orbit, lights, mesh, bones, skeletonHelper;
+            //(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};document.head.appendChild(script);})()
+            (function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='js/stats.min.js';document.head.appendChild(script);})()
+            var scene, camera, renderer, orbit, lights, mesh, bones, skeletonHelper;
 
 			var state = {
 				animateBones : false
@@ -22,7 +26,7 @@
 
 			function initScene () {
 				scene = new THREE.Scene();
-				scene.background = new THREE.Color( 0 );
+				scene.background = new THREE.Color(0);
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100000);
 				camera.position.set( 2000, 5000, 5000 );
 
@@ -30,7 +34,7 @@
 				renderer.setPixelRatio(window.devicePixelRatio);
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.setClearColor(0x000000, 1);
-				document.body.appendChild(renderer.domElement);
+				document.getElementById('human-robot').appendChild(renderer.domElement);
 
 				orbit = new THREE.OrbitControls(camera, renderer.domElement);
 				orbit.enableZoom = true;
@@ -119,9 +123,18 @@
 				skeletonHelper.bones[21].rotation.y =  -Math.PI * 0.5;
 			}
 
+			function showFPS() {
+				var fpsbutton = document.getElementById('fps_button');
+				var stat = new Stats();
+				var fps = stat.getFPS();
+				fpsbutton.innerHTML = "FPS="+fps;
+            }
+
 			function render(){
-				requestAnimationFrame(render);
-				var time = Date.now() * 0.001;
+
+                requestAnimationFrame(render);
+
+				//var time = Date.now() * 0.001;
 
 				renderer.render( scene, camera );
 			}
