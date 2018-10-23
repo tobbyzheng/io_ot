@@ -1,7 +1,7 @@
 {
-  "name": "ble-ti-sensortag-cc2541-demo",
+  "name": "body_motion",
   "version": "1.0",
-  "title": "TI SensorTag CC2541 Demo",
+  "title": "Body Motion Sensors",
   "description": "This app charts data from the TI SensorTag CC2541 using BLE",
   "tags": [
     {
