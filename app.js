@@ -16,7 +16,8 @@ app.CONNECT_TIMEOUT = 3000;
 app.NUM_DEVICES = 2;
 app.TYPE_ACC = 0;
 app.TYPE_GYR = 1;
-app.DIAGRAM_SCALER = [2, 255];
+app.TYPE_MAG = 2;
+app.DIAGRAM_SCALER = [2, 255, 300];
 
 /**
  * Object that holds SensorTag UUIDs.
@@ -161,7 +162,7 @@ app.startScan = function()
 					var i, start;
 					for (i = 0; i < app.cc2650.devices.length; i++) {
 						app.cc2650.devices[i].index = i;
-						app.cc2650.dataPoints.push([[], []]);
+						app.cc2650.dataPoints.push([[], [], []]);
 						app.connectToDevice(app.cc2650.devices[i]);
 						//app.sleep(500).then();
 						//start = new Date().getTime();
@@ -252,7 +253,7 @@ app.startCC2650AccelerometerNotification = function(device)
 	// 3-axis acc. + 3-axis gyro + magnetometer on: 127 (1111111)
 	device.writeCharacteristic(
 		app.cc2650.MOVEMENT_CONFIG,
-		new Uint8Array([63,0]),
+		new Uint8Array([127,0]),
 		function()
 		{
 			console.log('Status: writeCharacteristic ok.');
@@ -303,9 +304,13 @@ app.startCC2650AccelerometerNotification = function(device)
 			var dataArray = new Uint8Array(data);
 			var acc_vals = app.getCC2650AccelerometerValues(dataArray);
 			var gyr_vals = app.getCC2650GyroscopeValues(dataArray);
-
+			var mag_vals = app.getCC2650MagnetometerValues(dataArray);
+			//madgwickAHRSupdateIMU(gyr_vals.x, gyr_vals.y, gyr_vals.z, 
+			//					acc_vals.x, acc_vals.y, acc_vals.z);
+			//console.log("q0="+q0+" q1="+q1+" q2="+q2+" q3="+q3);
 			app.drawDiagram(app.TYPE_ACC, acc_vals, device.index, app.cc2650.dataPoints);
 			app.drawDiagram(app.TYPE_GYR, gyr_vals, device.index, app.cc2650.dataPoints);
+			app.drawDiagram(app.TYPE_MAG, mag_vals, device.index, app.cc2650.dataPoints);
 			//console.log("data length of "+device.index+": "+datalist.length);
 		},
 		function(errorCode)
@@ -327,29 +332,38 @@ app.getCC2650AccelerometerValues = function(data)
 	var ax = evothings.util.littleEndianToInt16(data, 6) / divisors.x;
 	var ay = evothings.util.littleEndianToInt16(data, 8) / divisors.y;
 	var az = evothings.util.littleEndianToInt16(data, 10) / divisors.z;
-	/*if (ax > app.max_ax) {
-		app.max_ax = ax;
-	}
-	if (ax < app.min_ax) {
-		app.min_ax = ax;
-	}
-	console.log("max gx="+app.max_ax);
-	console.log("min gx="+app.min_ax);
-	*/
 	// Return result.
 	return { x: ax, y: ay, z: az };
 };
 
 app.getCC2650GyroscopeValues = function(data) {
 	// Calculate gyroscope values.
-	var gx = evothings.util.littleEndianToInt16(data, 0) * 255.0 / 32768.0
-	var gy = evothings.util.littleEndianToInt16(data, 2) * 255.0 / 32768.0
-	var gz = evothings.util.littleEndianToInt16(data, 4) * 255.0 / 32768.0
+	var gx = evothings.util.littleEndianToInt16(data, 0) * 255.0 / 32768.0;
+	var gy = evothings.util.littleEndianToInt16(data, 2) * 255.0 / 32768.0;
+	var gz = evothings.util.littleEndianToInt16(data, 4) * 255.0 / 32768.0;
 
 	// Return result.
-	return { x: gx, y: gy, z: gz }
+	return { x: gx, y: gy, z: gz };
 }
 
+app.getCC2650MagnetometerValues = function(data) {
+	// Magnetometer values (Micro Tesla).
+	var mx = evothings.util.littleEndianToInt16(data, 12) * (4912.0 / 32768.0);
+	var my = evothings.util.littleEndianToInt16(data, 14) * (4912.0 / 32768.0);
+	var mz = evothings.util.littleEndianToInt16(data, 16) * (4912.0 / 32768.0);
+	/*
+	if (my > app.max_ax) {
+		app.max_ax = my;
+	}
+	if (my < app.min_ax) {
+		app.min_ax = my;
+	}
+	console.log("max my="+app.max_ax);
+	console.log("min my="+app.min_ax);
+	*/
+	// Return result.
+	return { x: mx, y: my, z: mz };
+}
 
 /**
  * Read accelerometer data.
@@ -455,6 +469,9 @@ app.drawDiagram = function(type, values, id, device_data)
 		case app.TYPE_GYR:
 			canvas_prefix = 'gyr';
 			break;
+		case app.TYPE_MAG:
+			canvas_prefix = 'mag';
+			break;
 	}
 	if (canvas_prefix == '') {
 		return;
@@ -472,7 +489,7 @@ app.drawDiagram = function(type, values, id, device_data)
 		dataPoints.splice(0, (dataPoints.length - canvas.width));
 	}
 
-	// Value range: acc [-2, 2], gyr [-255, 255]
+	// Value range: acc [-2, 2], gyr [-255, 255], mag [-1, 1]
 	function calcDiagramY(value)
 	{
 		// Return Y coordinate for this value.
