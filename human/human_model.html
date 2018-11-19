@@ -53,7 +53,7 @@
 
 				scene.add(lights[0]);
 				scene.add(lights[1]);
-
+				scene.add(new THREE.AxesHelper(2000));
 				window.addEventListener('resize', function () {
 					camera.aspect = window.innerWidth / window.innerHeight;
 					camera.updateProjectionMatrix();
@@ -121,16 +121,16 @@
 
 			function onChangeBoneX() {
 				console.log(skeletonHelper.bones.length);
-				skeletonHelper.bones[19].rotation.x =  -Math.PI * 0.5;
+				skeletonHelper.bones[19].rotation.x =  Math.PI * 0.5;
 			}
             function onChangeBoneY() {
                 console.log(skeletonHelper.bones.length);
-                skeletonHelper.bones[19].rotation.y = -Math.PI * 0.5;
+                skeletonHelper.bones[19].rotation.y = Math.PI * 0.5;
             }
 
             function onChangeBoneZ() {
                 console.log(skeletonHelper.bones.length);
-                skeletonHelper.bones[19].rotation.z = -Math.PI * 0.5;
+                skeletonHelper.bones[19].rotation.z = Math.PI * 0.5;
             }
 
 			function testQuaternion() {
