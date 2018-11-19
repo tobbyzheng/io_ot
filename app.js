@@ -28,7 +28,8 @@ app.cc2650.MOVEMENT_PERIOD = 'f000aa83-0451-4000-b000-000000000000';
 app.cc2650.MOVEMENT_NOTIFICATION = '00002902-0000-1000-8000-00805f9b34fb';
 
 // var to_rad = (x) => {return x/360.0 * 3.1415926 * 2};
-app.to_rad = (x) => {return x/6.0};
+// app.to_rad = (x) => {return x/54.0};
+app.to_rad = (x) => {return x/57.295779513};
 
 /**
  * Initialise the application.
@@ -162,8 +163,8 @@ app.startScan = function()
 						app.avg_y.push(0);
 						app.avg_z.push(0);
 						app.gi.push(0);
-						app.lower.push(50);
-						app.higher.push(150);
+						app.lower.push(10);
+						app.higher.push(51);
 						app.quarternions.push({q0: 1.0, q1: 0.0, q2: 0.0, q3: 0.0});
 						//app.sleep(500).then();
 						//start = new Date().getTime();
@@ -308,7 +309,10 @@ app.startCC2650AccelerometerNotification = function(device)
 			//madgwickAHRSupdateIMU(gyr_vals.x, gyr_vals.y, gyr_vals.z, 
 			//					acc_vals.x, acc_vals.y, acc_vals.z);
 
-			if (app.gi[id] < app.higher[id]) return;
+			if (app.gi[id] < app.higher[id]) {
+                console.log(app.gi[id] + "/" + app.higher[id]);
+                return;   
+            }
 			//console.log("Device "+id+" : Got enough data for madgwick");
 			/*
 			console.log('gyr: '+gyr_vals.x+' '+gyr_vals.y+' '+gyr_vals.z); 
@@ -316,11 +320,11 @@ app.startCC2650AccelerometerNotification = function(device)
 			console.log('mag: '+mag_vals.x+' '+mag_vals.y+' '+mag_vals.z);
 			*/
 			var q = madgwickAHRSupdate(app.quarternions[id], gyr_vals, acc_vals, mag_vals);
-			if (q) {
-				console.log("Device "+id+": q0="+q.q0+" q1="+q.q1+" q2="+q.q2+" q3="+q.q3);
+			// if (q) {
+			// 	console.log("Device "+id+": q0="+q.q0+" q1="+q.q1+" q2="+q.q2+" q3="+q.q3);
 				app.quarternions[id] = q;
 				updateBone(id, q);
-			}
+			// }
 
 			//app.drawDiagram(app.TYPE_ACC, acc_vals, device.index, app.cc2650.dataPoints);
 			//app.drawDiagram(app.TYPE_GYR, gyr_vals, device.index, app.cc2650.dataPoints);
@@ -340,7 +344,7 @@ app.startCC2650AccelerometerNotification = function(device)
  */
 app.getCC2650AccelerometerValues = function(data)
 {
-	var divisors = { x: -16384.0, y: 16384.0, z: -16384.0 };
+	var divisors = { x: -16384.0, y: -16384.0, z: -16384.0 };
 
 	// Calculate accelerometer values.
 	var ax = evothings.util.littleEndianToInt16(data, 6) / divisors.x;
@@ -352,9 +356,9 @@ app.getCC2650AccelerometerValues = function(data)
 
 app.getCC2650GyroscopeValues = function(data, id) {
 	// Calculate gyroscope values.
-	var gx = evothings.util.littleEndianToInt16(data, 0) * 255.0 / 32768.0;
-	var gy = evothings.util.littleEndianToInt16(data, 2) * 255.0 / 32768.0;
-	var gz = evothings.util.littleEndianToInt16(data, 4) * 255.0 / 32768.0;
+	var gx = evothings.util.littleEndianToInt16(data, 0) * 250.0 / 32768.0;
+	var gy = evothings.util.littleEndianToInt16(data, 2) * 250.0 / 32768.0;
+	var gz = evothings.util.littleEndianToInt16(data, 4) * 250.0 / 32768.0;
 
 	if (app.gi[id] < app.higher[id]) {
         //console.log(app.gi);
@@ -371,6 +375,9 @@ app.getCC2650GyroscopeValues = function(data, id) {
     }
 
 	// Return result.
+	// return { x: gx-app.avg_x[id],
+    //          y: gy-app.avg_y[id],
+    //          z: gz-app.avg_z[id] };
 	return { x: app.to_rad(gx-app.avg_x[id]),
              y: app.to_rad(gy-app.avg_y[id]),
              z: app.to_rad(gz-app.avg_z[id]) };
@@ -378,9 +385,13 @@ app.getCC2650GyroscopeValues = function(data, id) {
 
 app.getCC2650MagnetometerValues = function(data) {
 	// Magnetometer values (Micro Tesla).
-	var mx = evothings.util.littleEndianToInt16(data, 12) * (4912.0 / 32768.0);
-	var my = evothings.util.littleEndianToInt16(data, 14) * (4912.0 / 32768.0);
+	var mx = -evothings.util.littleEndianToInt16(data, 12) * (4912.0 / 32768.0);
+	var my = -evothings.util.littleEndianToInt16(data, 14) * (4912.0 / 32768.0);
 	var mz = evothings.util.littleEndianToInt16(data, 16) * (4912.0 / 32768.0);
+	// var mx = evothings.util.littleEndianToInt16(data, 12);
+	// var my = evothings.util.littleEndianToInt16(data, 14);
+	// var mz = evothings.util.littleEndianToInt16(data, 16);
+    // console.log(mx, my, mz);
 	/*
 	if (my > app.max_ax) {
 		app.max_ax = my;
@@ -390,7 +401,7 @@ app.getCC2650MagnetometerValues = function(data) {
 	}
 	console.log("max my="+app.max_ax);
 	console.log("min my="+app.min_ax);
-	*/
+	*/ 
 	// Return result.
 	return { x: mx, y: my, z: mz };
 }
