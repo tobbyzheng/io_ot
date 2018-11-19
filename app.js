@@ -344,7 +344,7 @@ app.startCC2650AccelerometerNotification = function(device)
  */
 app.getCC2650AccelerometerValues = function(data)
 {
-	var divisors = { x: -16384.0, y: -16384.0, z: -16384.0 };
+	var divisors = { x: -16384.0, y: 16384.0, z: -16384.0 };
 
 	// Calculate accelerometer values.
 	var ax = evothings.util.littleEndianToInt16(data, 6) / divisors.x;
@@ -385,8 +385,8 @@ app.getCC2650GyroscopeValues = function(data, id) {
 
 app.getCC2650MagnetometerValues = function(data) {
 	// Magnetometer values (Micro Tesla).
-	var mx = -evothings.util.littleEndianToInt16(data, 12) * (4912.0 / 32768.0);
-	var my = -evothings.util.littleEndianToInt16(data, 14) * (4912.0 / 32768.0);
+	var mx = evothings.util.littleEndianToInt16(data, 12) * (4912.0 / 32768.0);
+	var my = evothings.util.littleEndianToInt16(data, 14) * (4912.0 / 32768.0);
 	var mz = evothings.util.littleEndianToInt16(data, 16) * (4912.0 / 32768.0);
 	// var mx = evothings.util.littleEndianToInt16(data, 12);
 	// var my = evothings.util.littleEndianToInt16(data, 14);
