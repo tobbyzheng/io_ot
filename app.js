@@ -19,22 +19,6 @@ app.TYPE_GYR = 1;
 app.TYPE_MAG = 2;
 app.DIAGRAM_SCALER = [2, 255, 300];
 
-/**
- * Object that holds SensorTag UUIDs.
- */
-app.cc2541 = {};
-
-app.cc2541.ACCELEROMETER_SERVICE = 'f000aa10-0451-4000-b000-000000000000';
-app.cc2541.ACCELEROMETER_DATA = 'f000aa11-0451-4000-b000-000000000000';
-app.cc2541.ACCELEROMETER_CONFIG = 'f000aa12-0451-4000-b000-000000000000';
-app.cc2541.ACCELEROMETER_PERIOD = 'f000aa13-0451-4000-b000-000000000000';
-app.cc2541.ACCELEROMETER_NOTIFICATION = '00002902-0000-1000-8000-00805f9b34fb';
-
-/**
- * Data that is plotted on the canvas.
- */
-app.cc2541.dataPoints = [];
-
 // UUIDs for movement services and characteristics.
 app.cc2650 = {};
 app.cc2650.MOVEMENT_SERVICE = 'f000aa80-0451-4000-b000-000000000000';
@@ -146,7 +130,6 @@ app.stopConnectTimer = function()
 app.startScan = function()
 {
 	// Clean up any previous devices.
-	//app.cc2541.device = false;
 	app.cc2650.devices = [];
 
 	// Ensure we don't get duplicates.
@@ -166,10 +149,8 @@ app.startScan = function()
 				//if(s && s[0] == "0000aa80-0000-1000-8000-00805f9b34fb") {
 					app.cc2650.devices.push(device);
 					console.log("detected devices: "+app.cc2650.devices.length);
-				} else {
-					//app.cc2541.device = device;
 				}
-				if (app.cc2650.devices.length == app.NUM_DEVICES) { //&& app.cc2541.device) {
+				if (app.cc2650.devices.length == app.NUM_DEVICES) { 
                     evothings.easyble.stopScan();
 					app.stopConnectTimer();
 					var i, start;
@@ -192,7 +173,6 @@ app.startScan = function()
 
 					}
 					//app.connectToDevice(app.cc2650.device);
-					//app.connectToDevice(app.cc2541.device);
 				}
 			}
 		},
@@ -250,9 +230,7 @@ app.readServices = function(device)
 // Determine which sort of device we have, then call the appropriate start function.
 app.startAccelerometerNotification = function(device)
 {
-	if(device.__uuidMap[app.cc2541.ACCELEROMETER_DATA])
-		app.startCC2541AccelerometerNotification(device)
-	else if(device.__uuidMap[app.cc2650.MOVEMENT_DATA])
+	if(device.__uuidMap[app.cc2650.MOVEMENT_DATA])
 		app.startCC2650AccelerometerNotification(device)
 	else
 		app.showInfo('Unknown device connected!');
@@ -416,94 +394,6 @@ app.getCC2650MagnetometerValues = function(data) {
 	// Return result.
 	return { x: mx, y: my, z: mz };
 }
-
-/**
- * Read accelerometer data.
- * http://processors.wiki.ti.com/index.php/SensorTag_User_Guide#Accelerometer_2
- * http://processors.wiki.ti.com/index.php/File:BLE_SensorTag_GATT_Server.pdf
- */
-app.startCC2541AccelerometerNotification = function(device)
-{
-	app.showInfo('Status: Starting CC2541 accelerometer notification...');
-
-	// Set accelerometer configuration to ON.
-	device.writeCharacteristic(
-		app.cc2541.ACCELEROMETER_CONFIG,
-		new Uint8Array([1]),
-		function()
-		{
-			console.log('Status: writeCharacteristic ok.');
-		},
-		function(errorCode)
-		{
-			console.log('Error: writeCharacteristic: ' + errorCode + '.');
-		});
-
-	// Set accelerometer period to 100 ms.
-	device.writeCharacteristic(
-		app.cc2541.ACCELEROMETER_PERIOD ,
-		new Uint8Array([10]),
-		function()
-		{
-			console.log('Status: writeCharacteristic ok.');
-		},
-		function(errorCode)
-		{
-			console.log('Error: writeCharacteristic: ' + errorCode + '.');
-		});
-
-	// Set accelerometer notification to ON.
-	device.writeDescriptor(
-		app.cc2541.ACCELEROMETER_DATA,
-		app.cc2541.ACCELEROMETER_NOTIFICATION, // Notification descriptor.
-		new Uint8Array([1,0]),
-		function()
-		{
-			console.log('Status: writeDescriptor ok.');
-		},
-		function(errorCode)
-		{
-			// This error will happen on iOS, since this descriptor is not
-			// listed when requesting descriptors. On iOS you are not allowed
-			// to use the configuration descriptor explicitly. It should be
-			// safe to ignore this error.
-			console.log('Error: writeDescriptor: ' + errorCode + '.');
-		});
-
-	// Start accelerometer notification.
-	device.enableNotification(
-		app.cc2541.ACCELEROMETER_DATA,
-		function(data)
-		{
-			app.showInfo('Status: data stream active');
-			var dataArray = new Uint8Array(data);
-			var values = app.getCC2541AccelerometerValues(dataArray);
-			//app.drawDiagram(values, 1, app.cc2541.dataPoints);
-		},
-		function(errorCode)
-		{
-			console.log('Error: enableNotification: ' + errorCode + '.');
-		});
-};
-
-/**
- * Calculate accelerometer values from raw data for SensorTag 2.
- * @param data - an Uint8Array.
- * @return Object with fields: x, y, z.
- */
-app.getCC2541AccelerometerValues = function(data)
-{
-	// TODO: Set divisor based on firmware version.
-	var divisors = {x: 32.0, y: -32.0, z: 32.0}
-
-	// Calculate accelerometer values.
-	var ax = evothings.util.littleEndianToInt8(data, 0) / divisors.x;
-	var ay = evothings.util.littleEndianToInt8(data, 1) / divisors.y;
-	var az = evothings.util.littleEndianToInt8(data, 2) / divisors.z;
-
-	// Return result.
-	return { x: ax, y: ay, z: az };
-};
 
 /**
  * Plot diagram of sensor values.
