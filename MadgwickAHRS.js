@@ -105,9 +105,9 @@ function madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az) {
 // AHRS algorithm update
 
 function madgwickAHRSupdate(q, g, a, m) {
-    var gx = g.y, gy = g.x, gz = g.z;
-    var ax = a.y, ay = a.x, az = a.z;
-    var mx = m.y, my = m.x, mz = m.z;
+    var gx = -g.y, gy = g.z, gz = -g.x;
+    var ax = -a.y, ay = a.z, az = a.x;
+    var mx = -m.y, my = m.z, mz = m.x;
     var q0 = q.q0, q1 = q.q1, q2 = q.q2, q3 = q.q3; 
     var recipNorm;
     var s0, s1, s2, s3;

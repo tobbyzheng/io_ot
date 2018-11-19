@@ -28,10 +28,6 @@
 			</button>
 			<img class="logotype" src="ui/images/logo.svg" alt="Evothings" />
 		</header>-->
-        <!--<button onClick="onChangeBoneX()">x</button>
-        <button onClick="onChangeBoneY()">y</button>
-        <button onClick="onChangeBoneZ()">z</button>
-		<button onClick="testQuaternion()">quaterion</button>-->
 		<h1>Human Motion Tracker</h1>
 		<p id="info">Not initialized</p>
 
@@ -56,6 +52,8 @@
 			//(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='js/stats.min.js';document.head.appendChild(script);})()
             var scene, camera, renderer, orbit, lights, mesh, skeletonHelper;
 			var bones = [20, 39]; // upper arms
+			var initQs = {};
+			var start = true;
 			/*var state = {
 				animateBones : true
 			};*/
@@ -154,35 +152,13 @@
                     skeletonHelper = new THREE.SkeletonHelper(mesh);
 					//skeletonHelper.material.linewidth = 2;
 					scene.add(skeletonHelper);
+					if (start) {
+						start = false;
+						getInitQs();
+					}
 				});
 			}
 
-			function onChangeBoneX() {
-				console.log(skeletonHelper.bones.length);
-				skeletonHelper.bones[21].rotation.x =  -Math.PI * 0.5;
-			}
-            function onChangeBoneY() {
-                console.log(skeletonHelper.bones.length);
-                skeletonHelper.bones[21].rotation.y = -Math.PI * 0.5;
-            }
-
-            function onChangeBoneZ() {
-                console.log(skeletonHelper.bones.length);
-                skeletonHelper.bones[21].rotation.z = -Math.PI * 0.5;
-            }
-
-			function testQuaternion() {
-			    console.log(skeletonHelper.bones[21].quaternion.x);
-                console.log(skeletonHelper.bones[21].quaternion.y);
-                console.log(skeletonHelper.bones[21].quaternion.z);
-                console.log(skeletonHelper.bones[21].quaternion.w);
-
-			    var q1 = new THREE.Quaternion(0.1, -1, -0.2, -2);
-			    console.log("q1"+q1);
-			    console.log(skeletonHelper.bones[21]);
-                skeletonHelper.bones[21].applyQuaternion(q1);
-			}
-			
 			function updateBone(id, q) {
 				skeletonHelper.bones[bones[id]].quaternion.set(q.q1, q.q2, q.q3, q.q0);
 				//var newQ = new THREE.Quaternion(q.q1, q.q2, q.q3, q.q0);
@@ -190,7 +166,13 @@
 			}
 
 			function resetBones() {
-				// relax shoulders
+				for (bone in initQs) {
+					q = initQs[bone];
+					console.log("reset q.w: "+q.w);
+					skeletonHelper.bones[bone].quaternion.set(q.x, q.y, q.z, q.w);
+				}
+
+				/*// relax shoulders
 				skeletonHelper.bones[19].position.set(0, -3.1, -2.466);
 				skeletonHelper.bones[19].rotation.set(-1.9, -0.2, 3.14);
 				skeletonHelper.bones[38].position.set(0, 3.1, -2.466);
@@ -200,7 +182,7 @@
 				skeletonHelper.bones[20].position.set(2.1, 0, -16.3);
 				skeletonHelper.bones[20].rotation.set(1.2, -0.1, -0.25);
 				skeletonHelper.bones[39].position.set(2.1, 0, -16.3);
-				skeletonHelper.bones[39].rotation.set(-1.2, -0.1, 0.25);
+				skeletonHelper.bones[39].rotation.set(-1.2, -0.1, 0.25);*/
 			}
 
 			/*function showFPS() {
@@ -210,6 +192,15 @@
 				fpsbutton.innerHTML = "FPS="+fps;
             }*/
 
+			function getInitQs() {
+				// store init positions
+				bones.forEach(function(bone) {
+					q = skeletonHelper.bones[bone].quaternion;
+					initQs[bone] = {x: q.x, y: q.y, z: q.z, w: q.w};
+					console.log("Init q.w: "+initQs[bone].w);
+				});
+			}
+
 			function render(){
                 requestAnimationFrame(render);
 				renderer.render( scene, camera );
@@ -217,6 +208,8 @@
 			}
 			initScene();
 			render();
+
+
 		</script>
 	</body>
 </html>

@@ -105,7 +105,7 @@ app.onStopButton = function()
 	evothings.easyble.stopScan();
 	evothings.easyble.closeConnectedDevices();
 	app.reset_vars();
-	//resetBones();
+	resetBones();
 	app.showInfo('Status: Stopped.');
 };
 
@@ -163,7 +163,7 @@ app.startScan = function()
 						app.avg_z.push(0);
 						app.gi.push(0);
 						app.lower.push(50);
-						app.higher.push(150);
+						app.higher.push(120);
 						app.quarternions.push({q0: 1.0, q1: 0.0, q2: 0.0, q3: 0.0});
 						//app.sleep(500).then();
 						//start = new Date().getTime();
@@ -317,7 +317,7 @@ app.startCC2650AccelerometerNotification = function(device)
 			*/
 			var q = madgwickAHRSupdate(app.quarternions[id], gyr_vals, acc_vals, mag_vals);
 			if (q) {
-				console.log("Device "+id+": q0="+q.q0+" q1="+q.q1+" q2="+q.q2+" q3="+q.q3);
+				//console.log("Device "+id+": q0="+q.q0+" q1="+q.q1+" q2="+q.q2+" q3="+q.q3);
 				app.quarternions[id] = q;
 				updateBone(id, q);
 			}
