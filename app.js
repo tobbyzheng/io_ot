@@ -59,8 +59,12 @@ app.reset_vars = function() {
 	app.avg_x = [];
 	app.avg_y = [];
 	app.avg_z = [];
+	app.avga_x = [];
+	app.avga_y = [];
+	app.avga_z = [];
 	app.gi = [];
 	app.lower = [];
+	app.ai = [];
 	app.higher = [];
 
 	app.quarternions = [];
@@ -162,7 +166,11 @@ app.startScan = function()
 						app.avg_x.push(0);
 						app.avg_y.push(0);
 						app.avg_z.push(0);
+						app.avga_x.push(0);
+						app.avga_y.push(0);
+						app.avga_z.push(0);
 						app.gi.push(0);
+						app.ai.push(0);
 						app.lower.push(10);
 						app.higher.push(51);
 						app.quarternions.push({q0: 1.0, q1: 0.0, q2: 0.0, q3: 0.0});
@@ -303,9 +311,10 @@ app.startCC2650AccelerometerNotification = function(device)
 			var dataArray = new Uint8Array(data);
 			
 			var id = device.index;
-			var acc_vals = app.getCC2650AccelerometerValues(dataArray);
+			var acc_vals = app.getCC2650AccelerometerValues(dataArray, id);
 			var gyr_vals = app.getCC2650GyroscopeValues(dataArray, id);
-			var mag_vals = app.getCC2650MagnetometerValues(dataArray);
+			// var mag_vals = app.getCC2650MagnetometerValues(dataArray);
+	        var mag_vals =  { x: 0, y: 0, z: 0 };
 			//madgwickAHRSupdateIMU(gyr_vals.x, gyr_vals.y, gyr_vals.z, 
 			//					acc_vals.x, acc_vals.y, acc_vals.z);
 
@@ -342,15 +351,33 @@ app.startCC2650AccelerometerNotification = function(device)
  * @param data - an Uint8Array.
  * @return Object with fields: x, y, z.
  */
-app.getCC2650AccelerometerValues = function(data)
+app.getCC2650AccelerometerValues = function(data, id)
 {
-	var divisors = { x: -16384.0, y: 16384.0, z: -16384.0 };
+	var divisors = { x: 16384.0, y: 16384.0, z: 16384.0 };
 
 	// Calculate accelerometer values.
 	var ax = evothings.util.littleEndianToInt16(data, 6) / divisors.x;
 	var ay = evothings.util.littleEndianToInt16(data, 8) / divisors.y;
 	var az = evothings.util.littleEndianToInt16(data, 10) / divisors.z;
+
+	// if (app.ai[id] < app.higher[id]) {
+    //     //console.log(app.ai);
+    //     if (app.ai[id] < app.lower[id]) {
+    //         app.ai[id]++;
+	//         // return { x: gx, y: gy, z: gz }
+	//         return { x: 0, y: 0, z: 0}
+    //     }
+    //     app.avga_x[id] = ((app.ai[id] - app.lower[id]) * app.avga_x[id] + ax)/(app.ai[id] - app.lower[id] + 1);
+    //     app.avga_y[id] = ((app.ai[id] - app.lower[id]) * app.avga_y[id] + ay)/(app.ai[id] - app.lower[id] + 1);
+    //     app.avga_z[id] = ((app.ai[id] - app.lower[id]) * app.avga_z[id] + az)/(app.ai[id] - app.lower[id] + 1);
+    //     app.ai[id]++;
+    //     console.log("avgas for "+ id + "   " + app.avga_x[id] + " " + app.avga_y[id] + " " + app.avga_z[id]);
+	//     return { x: 0, y: 0, z: 0}
+    // }
 	// Return result.
+	// return { x: ax-app.avga_x[id],
+    //          y: ay-app.avga_y[id],
+    //          z: az-app.avga_z[id] };
 	return { x: ax, y: ay, z: az };
 };
 
@@ -378,6 +405,9 @@ app.getCC2650GyroscopeValues = function(data, id) {
 	// return { x: gx-app.avg_x[id],
     //          y: gy-app.avg_y[id],
     //          z: gz-app.avg_z[id] };
+	// return { x: app.to_rad(gx),
+    //          y: app.to_rad(gy),
+    //          z: app.to_rad(gz) };
 	return { x: app.to_rad(gx-app.avg_x[id]),
              y: app.to_rad(gy-app.avg_y[id]),
              z: app.to_rad(gz-app.avg_z[id]) };

@@ -18,7 +18,7 @@
 // Definitions
 
 var sampleFreq = 10.0;  // sample frequency in Hz
-var betaDef    =  0.3;   // 2 * proportional gain
+var betaDef    =  0.2;   // 2 * proportional gain
 
 //---------------------------------------------------------------------------------------------------
 // Variable definitions
@@ -32,8 +32,9 @@ console.log("Madgwick here");
 
 //---------------------------------------------------------------------------------------------------
 // IMU algorithm update
-function madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az) {
-    var q0 = 1.0, q1 = 0.0, q2 = 0.0, q3 = 0.0; // quaternion of sensor frame relative to auxiliary frame
+function madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az, q) {
+    var q0 = q.q0, q1 = q.q1, q2 = q.q2, q3 = q.q3; 
+    // var q0 = 1.0, q1 = 0.0, q2 = 0.0, q3 = 0.0; // quaternion of sensor frame relative to auxiliary frame
     var recipNorm;
     var s0, s1, s2, s3;
     var qDot1, qDot2, qDot3, qDot4;
@@ -99,15 +100,17 @@ function madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az) {
     q1 *= recipNorm;
     q2 *= recipNorm;
     q3 *= recipNorm;
+    return {q0: q0, q1: q1, q2: q2, q3: q3};
 }
 
 //---------------------------------------------------------------------------------------------------
 // AHRS algorithm update
 
 function madgwickAHRSupdate(q, g, a, m) {
-    var gx =   g.y, gy =   g.x, gz =   -g.z;
-    var ax =   a.y, ay =   a.x, az =    a.z;
-    var mx =   m.y, my =   m.x , mz =   m.z;
+    var gx =   -g.y, gy =   g.x, gz =    g.z;
+    var ax =   -a.y, ay =   a.x, az =    a.z;
+    return madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az, q);
+    var mx =   m.x, my =   m.z , mz =   m.y;
     var q0 = q.q0, q1 = q.q1, q2 = q.q2, q3 = q.q3; 
     var recipNorm;
     var s0, s1, s2, s3;
@@ -118,8 +121,8 @@ function madgwickAHRSupdate(q, g, a, m) {
 
     // Use IMU algorithm if magnetometer measurement invalid (avoids NaN in magnetometer normalisation)
     if ((mx === 0.0) && (my === 0.0) && (mz === 0.0)) {
-        madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az);
-        return;
+        console.log("All zero for m")
+        return madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az, q);
     }
 
     // Rate of change of quaternion from gyroscope

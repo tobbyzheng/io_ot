@@ -154,6 +154,7 @@
                     skeletonHelper = new THREE.SkeletonHelper(mesh);
 					//skeletonHelper.material.linewidth = 2;
 					scene.add(skeletonHelper);
+                    /* resetBones(); */
 				});
 			}
 
@@ -184,15 +185,43 @@
 			}
 			
 			function updateBone(id, q) {
-				skeletonHelper.bones[bones[id]].quaternion.set(q.q1, q.q2, q.q3, q.q0);
+                /* var quaternion = new THREE.Quaternion(); */
+                if (q == undefined) return;
+                /* quaternion.set(q.q2, -q.q3, -q.q1, q.q0); */
+
+                /* console.log("id is " + id); */
+                /* var prev_q_inv = new THREE.Quaternion(); */
+                /* console.log("YYYYYYYYYYYYY dest is " + skeletonHelper.bones[bones[0] + id - 1].quaternion.x); */
+				/* prev_q_inv = skeletonHelper.bones[bones[0] + id - 1].quaternion.copy(); */
+                /* console.log("PPPPPPPPPPPPP"); */
+                /* prev_q_inv.inverse(); */
+                /* console.log("qqqqqqqqqqqq"); */
+				/* skeletonHelper.bones[bones[0] + id].quaternion.multiplyQuaternions(prev_q_inv, quaternion); */
+				skeletonHelper.bones[bones[0] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0);
+
+                /* console.log(q.q1 + " " + q.q2 + " " + q.q3 + " " + q.q0); */
+				/* skeletonHelper.bones[bones[id]].quaternion.set(  -0.5, -0.5, 0.5 , 0.5); */
+				/* skeletonHelper.bones[bones[id]].quaternion.multiply(quaternion); */
+                /* var quaternion = new THREE.Quaternion(); */
+                /* quaternion.set(  -0.5, -0.5, 0.5 , -0.5); */
+
+                /* var quaternion2 = new THREE.Quaternion(); */
+                /* quaternion2.set(q.q1, q.q2, q.q3, q.q0); */
+                /* quaternion2.multiply(quaternion); */
+
+				/* skeletonHelper.bones[bones[id]].quaternion.set(q.q1, q.q2, q.q3, q.q0); */
+				/* skeletonHelper.bones[bones[id]].quaternion.multiply(quaternion); */
 				//var newQ = new THREE.Quaternion(q.q1, q.q2, q.q3, q.q0);
                 //skeletonHelper.bones[bones[id]].applyQuaternion(newQ);
 			}
 
 			function resetBones() {
 				// relax shoulders
+				skeletonHelper.bones[19].quaternion = THREE.Quaternion();
+				skeletonHelper.bones[19].quaternion.set(1, 0, 0, 0);
 				skeletonHelper.bones[19].position.set(0, -3.1, -2.466);
 				skeletonHelper.bones[19].rotation.set(-1.9, -0.2, 3.14);
+
 				skeletonHelper.bones[38].position.set(0, 3.1, -2.466);
 				skeletonHelper.bones[38].rotation.set(1.9, -0.2, -3.14);
 
@@ -201,6 +230,9 @@
 				skeletonHelper.bones[20].rotation.set(1.2, -0.1, -0.25);
 				skeletonHelper.bones[39].position.set(2.1, 0, -16.3);
 				skeletonHelper.bones[39].rotation.set(-1.2, -0.1, 0.25);
+
+                /* var tmp = new THREE.Quaternion(); */
+                /* tmp.set(1, 0, 0, 0); */
 			}
 
 			/*function showFPS() {
