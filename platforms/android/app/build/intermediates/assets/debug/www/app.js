@@ -13,11 +13,19 @@ app.sleep = (milliseconds) => {
  * Timeout (ms) after which a message is shown if the SensorTag wasn't found.
  */
 app.CONNECT_TIMEOUT = 3000;
-app.NUM_DEVICES = 1;
+//app.NUM_DEVICES = 1;
 app.TYPE_ACC = 0;
 app.TYPE_GYR = 1;
 app.TYPE_MAG = 2;
 app.DIAGRAM_SCALER = [2, 255, 300];
+app.quaternions = [];
+app.streaming = false;
+app.num_devices = 1;
+
+//app.mag_off = {};
+//app.mag_off.X = 15.0;
+//app.mag_off.Y = -90.0;
+//app.mag_off.Z = 170.0;
 
 // UUIDs for movement services and characteristics.
 app.cc2650 = {};
@@ -48,6 +56,14 @@ app.initialize = function()
 
 		// Adjust the canvas size when the document has loaded.
 		app.respondCanvas();
+		var slider = document.getElementById("numDeviceSlider");
+		var slider_label = document.getElementById("numDeviceLabel");
+		app.num_devices = slider.value;
+		slider_label.innerText = slider.value;
+		slider.oninput = function() {
+			app.num_devices = slider.value;
+			slider_label.innerText = slider.value;
+		}
 	});
 };
 
@@ -62,7 +78,11 @@ app.reset_vars = function() {
 	app.lower = [];
 	app.higher = [];
 
-	app.quarternions = [];
+	app.quaternions = [];
+	app.streaming = false;
+	
+	app.mag_offset = [0, 0, 0];
+	app.count = 0;
 }
 
 /**
@@ -150,7 +170,7 @@ app.startScan = function()
 					app.cc2650.devices.push(device);
 					console.log("detected devices: "+app.cc2650.devices.length);
 				}
-				if (app.cc2650.devices.length == app.NUM_DEVICES) { 
+				if (app.cc2650.devices.length == app.num_devices) { 
                     evothings.easyble.stopScan();
 					app.stopConnectTimer();
 					var i, start;
@@ -162,9 +182,9 @@ app.startScan = function()
 						app.avg_y.push(0);
 						app.avg_z.push(0);
 						app.gi.push(0);
-						app.lower.push(50);
-						app.higher.push(150);
-						app.quarternions.push({q0: 1.0, q1: 0.0, q2: 0.0, q3: 0.0});
+						app.lower.push(10);
+						app.higher.push(51);
+						app.quaternions.push({q0: 1.0, q1: 0.0, q2: 0.0, q3: 0.0});
 						//app.sleep(500).then();
 						//start = new Date().getTime();
 						//console.log(i+" before: "+start);
@@ -298,7 +318,9 @@ app.startCC2650AccelerometerNotification = function(device)
 		app.cc2650.MOVEMENT_DATA,
 		function(data)
 		{
-			app.showInfo('Status: data stream active');
+			if (!app.streaming) {
+				app.showInfo('Status: Data stream active... Please wait');
+			}
 			var dataArray = new Uint8Array(data);
 			
 			var id = device.index;
@@ -315,12 +337,24 @@ app.startCC2650AccelerometerNotification = function(device)
 			console.log('acc: '+acc_vals.x+' '+acc_vals.y+' '+acc_vals.z); 
 			console.log('mag: '+mag_vals.x+' '+mag_vals.y+' '+mag_vals.z);
 			*/
-			var q = madgwickAHRSupdate(app.quarternions[id], gyr_vals, acc_vals, mag_vals);
-			if (q) {
-				console.log("Device "+id+": q0="+q.q0+" q1="+q.q1+" q2="+q.q2+" q3="+q.q3);
-				app.quarternions[id] = q;
-				updateBone(id, q);
+
+			if (!app.streaming) {
+				/*if (model_start) return;
+				var q = initQs[id];
+				app.quaternions[id].q0 = q.w;
+				app.quaternions[id].q1 = q.x;
+				app.quaternions[id].q2 = q.y;
+				app.quaternions[id].q3 = q.z;*/
+				app.streaming = true;
+				app.showInfo("Status: Sensor fusion started");
 			}
+			madgwickAHRSupdateIMU(gyr_vals, acc_vals, app.quaternions[id]);
+			//madgwickAHRSupdate(app.quaternions[id], gyr_vals, acc_vals, mag_vals);
+			//if (q) {
+				//console.log("Device "+id+": q0="+q.q0+" q1="+q.q1+" q2="+q.q2+" q3="+q.q3);
+				//app.quaternions[id] = q;
+				//updateBone(id, q);
+			//}
 
 			//app.drawDiagram(app.TYPE_ACC, acc_vals, device.index, app.cc2650.dataPoints);
 			//app.drawDiagram(app.TYPE_GYR, gyr_vals, device.index, app.cc2650.dataPoints);
@@ -391,8 +425,28 @@ app.getCC2650MagnetometerValues = function(data) {
 	console.log("max my="+app.max_ax);
 	console.log("min my="+app.min_ax);
 	*/
+
+	if (app.count < 300) {
+		app.mag_offset[0] += mx;
+		app.mag_offset[1] += my;
+		app.mag_offset[2] += mz;
+		app.count++;
+	} else {
+		app.count = 0;
+		ox = app.mag_offset[0] / 300;
+		oy = app.mag_offset[1] / 300;
+		oz = app.mag_offset[2] / 300;
+		//console.log("offset x="+ox);
+		//console.log("offset y="+oy);
+		//console.log("offset z="+oz);
+		app.mag_offset[0] = 0;
+		app.mag_offset[1] = 0;
+		app.mag_offset[2] = 0;
+	}
+
 	// Return result.
 	return { x: mx, y: my, z: mz };
+	//return { x: mx-app.mag_off.X, y: my-app.mag_off.Y, z: mz-app.mag_off.Z };
 }
 
 /**
@@ -400,6 +454,7 @@ app.getCC2650MagnetometerValues = function(data) {
  * Values plotted are expected to be between -1 and 1
  * and in the form of objects with fields x, y, z.
  */
+/*
 app.drawDiagram = function(type, values, id, device_data)
 {
 	//console.log("Device "+id+" is drawing");
@@ -466,6 +521,7 @@ app.drawDiagram = function(type, values, id, device_data)
 	drawLine('y', '#0f0');
 	drawLine('z', '#00f');
 };
+*/
 
 // Initialize the app.
 app.initialize();

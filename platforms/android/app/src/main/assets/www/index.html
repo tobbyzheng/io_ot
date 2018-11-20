@@ -1,222 +1,244 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no,
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no,
 			shrink-to-fit=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
-		<title>Human Motion Tracker</title>
-		<style>
-			@import 'ui/css/evothings-app.css';
+	<title>Human Motion Tracker</title>
+	<style>
+		@import 'ui/css/evothings-app.css';
+			@import 'ui/css/style.css';
 		</style>
-		<script>
-			if (window.hyper && window.hyper.log) { console.log = hyper.log }
-		</script>
-		<script src="js/three.min.js"></script>
-		<script src="js/OrbitControls.js"></script>
-		<script src="cordova.js"></script>
-		<script src="libs/jquery/jquery.js"></script>
-		<script src="libs/evothings/evothings.js"></script>
-		<script src="libs/evothings/ui/ui.js"></script>
-		<script src="libs/evothings/easyble/easyble.js"></script>
-		<script src="app.js"></script>
-		<script src="MadgwickAHRS.js"></script>
-	</head>
-	<body ontouchstart="">
-		<!--<header>
-			<button class="back" onclick="history.back()">
-				<img src="ui/images/arrow-left.svg" />
-			</button>
-			<img class="logotype" src="ui/images/logo.svg" alt="Evothings" />
-		</header>-->
-        <!--<button onClick="onChangeBoneX()">x</button>
-        <button onClick="onChangeBoneY()">y</button>
-        <button onClick="onChangeBoneZ()">z</button>
-		<button onClick="testQuaternion()">quaterion</button>-->
-		<h1>Human Motion Tracker</h1>
-		<p id="info">Not initialized</p>
+	<script>
+		if (window.hyper && window.hyper.log) { console.log = hyper.log }
+	</script>
+	<script src="js/three.min.js"></script>
+	<script src="js/OrbitControls.js"></script>
+	<script src="cordova.js"></script>
+	<script src="libs/jquery/jquery.js"></script>
+	<script src="libs/evothings/evothings.js"></script>
+	<script src="libs/evothings/ui/ui.js"></script>
+	<script src="libs/evothings/easyble/easyble.js"></script>
+	<script src="app.js"></script>
+	<script src="MadgwickAHRS.js"></script>
+</head>
 
-		<button onclick="app.onStartButton()" class="green">START</button>
-		<button onclick="app.onStopButton()" class="red">STOP</button>
-		<br>
+<body ontouchstart="">
+	<h1>Human Motion Tracker</h1>
 
-		<div id="human-robot" width=400></div>
-		<!---<button id="fps_button" onClick="showFPS()">FPS</button>-->
-		<script>
-			// resize div
-			var canvas_div = $('#human-robot');
-			var container = $(canvas_div).parent();
-			max_width = $(container).innerWidth()-10;
-			$(canvas_div).css('width', max_width);
-			//console.log("container:"+max_width);
-			//console.log("div:"+$(canvas_div).innerWidth());*/
-  
-			var headerHeight = $('header').outerHeight();	
-			var max_height = window.innerHeight - headerHeight;
+	<div class="slidecontainer">
+		Number of Sensortags: <label id="numDeviceLabel"></label>
+		<input type="range" min="1" max="5" step="1" value="1" class="slider" id="numDeviceSlider">
+	</div>
+	<button onclick="app.onStartButton()" class="green">START</button>
+	<button onclick="app.onStopButton()" class="red">STOP</button>
+	<br>
+	<p id="info">Not initialized</p>
 
-			//(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='js/stats.min.js';document.head.appendChild(script);})()
-            var scene, camera, renderer, orbit, lights, mesh, skeletonHelper;
-			var bones = [20, 39]; // upper arms
-			/*var state = {
-				animateBones : true
-			};*/
+	<div id="human-robot" width=400></div>
+	<!---<button id="fps_button" onClick="showFPS()">FPS</button>-->
+	<script>
+		// resize div
+		var canvas_div = $('#human-robot');
+		var container = $(canvas_div).parent();
+		var max_width = $(container).innerWidth() - 10;
+		$(canvas_div).css('width', max_width);
+		//console.log("container:"+max_width);
+		//console.log("div:"+$(canvas_div).innerWidth());*/
 
-			function initScene () {
-				scene = new THREE.Scene();
-				scene.background = new THREE.Color(0);
-				camera = new THREE.PerspectiveCamera( 60, max_width / max_height, 1, 100000);
-				camera.position.set( 2000, 5000, 5000 );
+		//var headerHeight = $('header').outerHeight();	
+		var max_height = window.innerHeight - 200; //- headerHeight;
 
-				renderer = new THREE.WebGLRenderer({ antialias: true });
-				renderer.setPixelRatio(window.devicePixelRatio);
-				renderer.setSize( max_width, max_height);
-				renderer.setClearColor(0x000000, 1);
-				document.getElementById('human-robot').appendChild(renderer.domElement);
+		//(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='js/stats.min.js';document.head.appendChild(script);})()
+		var scene, camera, renderer, orbit, lights, mesh, skeletonHelper;
+		var bones = [20, 39]; // upper arms
+		var initQs = [];
+		var model_start = true;
+		var samplePeriod = 1000 / sampleFreq;
+		//var Q_OFFSET = new THREE.Quaternion(-0.5, 0.5, -0.5, 0.5);
+		var Q_OFFSET = new THREE.Quaternion(0, 0, 0, 1);
+		//var Q_OFFSET = new THREE.Quaternion(0, 0, -Math.sqrt(2)/2.0, Math.sqrt(2)/2.0);
+		/*var state = {
+			animateBones : true
+		};*/
 
-				orbit = new THREE.OrbitControls(camera, renderer.domElement);
-				orbit.enableZoom = true;
-				orbit.target.set( 0, 3000, 0 );
-				orbit.update();
-				//orbit.addEventListener( 'change', render );
+		function initScene() {
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color(0);
+			camera = new THREE.PerspectiveCamera(60, max_width / max_height, 1, 100000);
+			camera.position.set(2000, 5000, 5000);
 
-				lights = [];
-				lights[0] = new THREE.DirectionalLight( 0xffffff, 1 );
- 				lights[1] = new THREE.PointLight( 0xffffff, 1, 0 );
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(max_width, max_height);
+			renderer.setClearColor(0x000000, 1);
+			document.getElementById('human-robot').appendChild(renderer.domElement);
 
-				lights[0].position.set( 0, 140, 500 );
-				lights[0].position.multiplyScalar( 1.1 );
-				lights[0].color.setHSL( 0.6, 0.075, 1 );
-				lights[1].position.set( 0, - 1, 0 );
+			orbit = new THREE.OrbitControls(camera, renderer.domElement);
+			orbit.enableZoom = true;
+			orbit.target.set(0, 3000, 0);
+			orbit.update();
+			//orbit.addEventListener( 'change', render );
 
-				scene.add(lights[0]);
-				scene.add(lights[1]);
+			lights = [];
+			lights[0] = new THREE.DirectionalLight(0xffffff, 1);
+			lights[1] = new THREE.PointLight(0xffffff, 1, 0);
 
-				/*
-				window.addEventListener('resize', function () {
-					camera.aspect = window.innerWidth / window.innerHeight;
-					camera.updateProjectionMatrix();
-					renderer.setSize( window.innerWidth, window.innerHeight );
-				}, false );
-				*/
+			lights[0].position.set(0, 140, 500);
+			lights[0].position.multiplyScalar(1.1);
+			lights[0].color.setHSL(0.6, 0.075, 1);
+			lights[1].position.set(0, - 1, 0);
 
-				initBones();
-			}
+			scene.add(lights[0]);
+			scene.add(lights[1]);
 
-			function initBones () {
-				//var segmentHeight = 8;
-				//var segmentCount = 4;
-				//var height = segmentHeight * segmentCount;
-				//var halfHeight = height * 0.5;
+			/*
+			window.addEventListener('resize', function () {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}, false );
+			*/
 
-				//var sizing = {
-				//	segmentHeight : segmentHeight,
-				//	segmentCount : segmentCount,
-				//	height : height,
-				//	halfHeight : halfHeight
-				//};
+			initBones();
+		}
 
-				//var geometry = createGeometry( sizing );
-				//var bones = createBones(sizing);
-				//mesh = createMesh( geometry, bones );
+		function initBones() {
+			//var segmentHeight = 8;
+			//var segmentCount = 4;
+			//var height = segmentHeight * segmentCount;
+			//var halfHeight = height * 0.5;
 
-				/* Create mesh */
-				// var material = new THREE.MeshNormalMaterial({
-				// 		color: 0, //13359858,
-				// 		transparent: true,
-				// 		opacity: 1,
-				// 		specular: 10.0,
-				// 		skinning: true,
-				// 		morphTargets: true,
-				// 		wireframe: false
-				// });
+			//var sizing = {
+			//	segmentHeight : segmentHeight,
+			//	segmentCount : segmentCount,
+			//	height : height,
+			//	halfHeight : halfHeight
+			//};
 
-				// try to load the character
-				var loader = new THREE.ObjectLoader();
-				loader.load("models/skinned/marine/marine_anims.json", function (loadedObject) {
-					//geometry.computeBoundingBox();
-					//geometry.computeVertexNormals();
-					loadedObject.traverse(function(child) {
-						if (child instanceof THREE.SkinnedMesh) {
-							mesh = child;
-						}
-					});
-					//var mesh = new THREE.SkinnedMesh(geometry, material);
-					// var skeleton = new THREE.Skeleton(bones);
-					// mesh.add(bones[0]);
-					//mesh.bind(skeleton);
-                    //mesh.rotation.y = - 135 * Math.PI / 180;
-                    mesh.scale.set(30, 30, 30);
-                    mesh.scale.multiplyScalar(1);
-                    // var bb = geometry.boundingBox;
-                    // console.log(bb);
-                    //mesh.position.set(0, 0, 0);
-                    scene.add(mesh);
+			//var geometry = createGeometry( sizing );
+			//var bones = createBones(sizing);
+			//mesh = createMesh( geometry, bones );
 
-                    skeletonHelper = new THREE.SkeletonHelper(mesh);
-					//skeletonHelper.material.linewidth = 2;
-					scene.add(skeletonHelper);
+			/* Create mesh */
+			// var material = new THREE.MeshNormalMaterial({
+			// 		color: 0, //13359858,
+			// 		transparent: true,
+			// 		opacity: 1,
+			// 		specular: 10.0,
+			// 		skinning: true,
+			// 		morphTargets: true,
+			// 		wireframe: false
+			// });
+
+			// try to load the character
+			var loader = new THREE.ObjectLoader();
+			loader.load("models/skinned/marine/marine_anims.json", function (loadedObject) {
+				//geometry.computeBoundingBox();
+				//geometry.computeVertexNormals();
+				loadedObject.traverse(function (child) {
+					if (child instanceof THREE.SkinnedMesh) {
+						mesh = child;
+					}
 				});
+				//var mesh = new THREE.SkinnedMesh(geometry, material);
+				// var skeleton = new THREE.Skeleton(bones);
+				// mesh.add(bones[0]);
+				//mesh.bind(skeleton);
+				//mesh.rotation.y = - 135 * Math.PI / 180;
+				mesh.scale.set(30, 30, 30);
+				mesh.scale.multiplyScalar(1);
+				// var bb = geometry.boundingBox;
+				// console.log(bb);
+				//mesh.position.set(0, 0, 0);
+				scene.add(mesh);
+
+				skeletonHelper = new THREE.SkeletonHelper(mesh);
+				//skeletonHelper.material.linewidth = 2;
+				scene.add(skeletonHelper);
+				if (model_start) {
+					getInitQs();
+					model_start = false;
+				}
+			});
+		}
+
+		function updateBone(id, q) {
+			//console.log("q1="+q.q1+" q2="+q.q2+" q3="+q.q3+" q0="+q.q0);
+			/*var w = q.q0 + initQs[id].w;
+			var x = q.q1 + initQs[id].x;
+			var y = q.q2 + initQs[id].y;
+			var z = q.q3 + initQs[id].z;
+			skeletonHelper.bones[bones[id]].quaternion.set(x, y, z, w);*/
+			if (typeof q === "undefined") return;
+
+			var raw_newQ = new THREE.Quaternion(q.q1, q.q2, q.q3, q.q0);
+			var newQ = new THREE.Quaternion().multiplyQuaternions(Q_OFFSET, raw_newQ);
+			skeletonHelper.bones[bones[id]].quaternion.set(newQ.x, newQ.y, newQ.z, newQ.w);
+			//skeletonHelper.bones[bones[id]].applyQuaternion(newQ);
+		}
+
+		function resetBones() {
+			var i;
+			for (i = 0; i < initQs.length; i++) {
+				q = initQs[i];
+				//console.log("reset q.w: "+q.w);
+				skeletonHelper.bones[bones[i]].quaternion.set(q.x, q.y, q.z, q.w);
 			}
 
-			function onChangeBoneX() {
-				console.log(skeletonHelper.bones.length);
-				skeletonHelper.bones[21].rotation.x =  -Math.PI * 0.5;
+			/*// relax shoulders
+			skeletonHelper.bones[19].position.set(0, -3.1, -2.466);
+			skeletonHelper.bones[19].rotation.set(-1.9, -0.2, 3.14);
+			skeletonHelper.bones[38].position.set(0, 3.1, -2.466);
+			skeletonHelper.bones[38].rotation.set(1.9, -0.2, -3.14);
+
+			// put arms down
+			skeletonHelper.bones[20].position.set(2.1, 0, -16.3);
+			skeletonHelper.bones[20].rotation.set(1.2, -0.1, -0.25);
+			skeletonHelper.bones[39].position.set(2.1, 0, -16.3);
+			skeletonHelper.bones[39].rotation.set(-1.2, -0.1, 0.25);*/
+		}
+
+		/*function showFPS() {
+			var fpsbutton = document.getElementById('fps_button');
+			var stat = new Stats();
+			var fps = stat.getFPS();
+			fpsbutton.innerHTML = "FPS="+fps;
+		}*/
+
+		function getInitQs() {
+			// store init positions
+			bones.forEach(function (bone) {
+				q = skeletonHelper.bones[bone].quaternion;
+				initQs.push({ x: q.x, y: q.y, z: q.z, w: q.w });
+				//console.log("Init q.w: "+initQs[bone].w);
+			});
+			/*var i;
+			for (i = 0; i < bones.length; i++) {
+				q = skeletonHelper.bones[bones[i]].quaternion;
+				initQs[i] = {x: q.x, y: q.y, z: q.z, w: q.w};
+			}*/
+		}
+
+		function render() {
+			requestAnimationFrame(render);
+			renderer.render(scene, camera);
+			//var time = Date.now() * 0.001;
+		}
+		initScene();
+		render();
+
+		setInterval(function () {
+			if (app.streaming && app.quaternions.length > 0) {
+				var i;
+				for (i = 0; i < app.quaternions.length; i++) {
+					updateBone(i, app.quaternions[i]);
+				}
 			}
-            function onChangeBoneY() {
-                console.log(skeletonHelper.bones.length);
-                skeletonHelper.bones[21].rotation.y = -Math.PI * 0.5;
-            }
+		}, samplePeriod);
 
-            function onChangeBoneZ() {
-                console.log(skeletonHelper.bones.length);
-                skeletonHelper.bones[21].rotation.z = -Math.PI * 0.5;
-            }
+	</script>
+</body>
 
-			function testQuaternion() {
-			    console.log(skeletonHelper.bones[21].quaternion.x);
-                console.log(skeletonHelper.bones[21].quaternion.y);
-                console.log(skeletonHelper.bones[21].quaternion.z);
-                console.log(skeletonHelper.bones[21].quaternion.w);
-
-			    var q1 = new THREE.Quaternion(0.1, -1, -0.2, -2);
-			    console.log("q1"+q1);
-			    console.log(skeletonHelper.bones[21]);
-                skeletonHelper.bones[21].applyQuaternion(q1);
-			}
-			
-			function updateBone(id, q) {
-				skeletonHelper.bones[bones[id]].quaternion.set(q.q1, q.q2, q.q3, q.q0);
-				//var newQ = new THREE.Quaternion(q.q1, q.q2, q.q3, q.q0);
-                //skeletonHelper.bones[bones[id]].applyQuaternion(newQ);
-			}
-
-			function resetBones() {
-				// relax shoulders
-				skeletonHelper.bones[19].position.set(0, -3.1, -2.466);
-				skeletonHelper.bones[19].rotation.set(-1.9, -0.2, 3.14);
-				skeletonHelper.bones[38].position.set(0, 3.1, -2.466);
-				skeletonHelper.bones[38].rotation.set(1.9, -0.2, -3.14);
-
-				// put arms down
-				skeletonHelper.bones[20].position.set(2.1, 0, -16.3);
-				skeletonHelper.bones[20].rotation.set(1.2, -0.1, -0.25);
-				skeletonHelper.bones[39].position.set(2.1, 0, -16.3);
-				skeletonHelper.bones[39].rotation.set(-1.2, -0.1, 0.25);
-			}
-
-			/*function showFPS() {
-				var fpsbutton = document.getElementById('fps_button');
-				var stat = new Stats();
-				var fps = stat.getFPS();
-				fpsbutton.innerHTML = "FPS="+fps;
-            }*/
-
-			function render(){
-                requestAnimationFrame(render);
-				renderer.render( scene, camera );
-                //var time = Date.now() * 0.001;
-			}
-			initScene();
-			render();
-		</script>
-	</body>
 </html>
