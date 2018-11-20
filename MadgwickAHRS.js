@@ -18,7 +18,7 @@
 // Definitions
 
 var sampleFreq = 100.0;  // sample frequency in Hz
-var betaDef    =  1;   // 2 * proportional gain
+var betaDef    =  0.86;   // 2 * proportional gain
 
 //---------------------------------------------------------------------------------------------------
 // Variable definitions
@@ -105,9 +105,9 @@ function madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az) {
 // AHRS algorithm update
 
 function madgwickAHRSupdate(q, g, a, m) {
-    var gx = -g.y, gy = g.z, gz = -g.x;
-    var ax = -a.y, ay = a.z, az = a.x;
-    var mx = -m.y, my = m.z, mz = m.x;
+    var gx = g.x, gy = g.y, gz = g.z;
+    var ax = a.x, ay = a.y, az = a.z;
+    var mx = m.x, my = m.y, mz = m.z;
     var q0 = q.q0, q1 = q.q1, q2 = q.q2, q3 = q.q3; 
     var recipNorm;
     var s0, s1, s2, s3;
@@ -203,7 +203,12 @@ function madgwickAHRSupdate(q, g, a, m) {
     q1 *= recipNorm;
     q2 *= recipNorm;
     q3 *= recipNorm;
-    return {q0: q0, q1: q1, q2: q2, q3: q3};
+
+    //return {q0: q0, q1: q1, q2: q2, q3: q3};
+    q.q0 = q0;
+    q.q1 = q1;
+    q.q2 = q2;
+    q.q3 = q3;
 }
 
 //====================================================================================================

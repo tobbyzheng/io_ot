@@ -52,8 +52,10 @@
 			//(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='js/stats.min.js';document.head.appendChild(script);})()
             var scene, camera, renderer, orbit, lights, mesh, skeletonHelper;
 			var bones = [20, 39]; // upper arms
-			var initQs = {};
-			var start = true;
+			var initQs = [];
+			var model_start = true;
+			var samplePeriod = 1000 / sampleFreq;
+			var Q_OFFSET = new THREE.Quaternion(Math.sqrt(2)/2.0, 0, 0, Math.sqrt(2)/2.0);
 			/*var state = {
 				animateBones : true
 			};*/
@@ -152,24 +154,33 @@
                     skeletonHelper = new THREE.SkeletonHelper(mesh);
 					//skeletonHelper.material.linewidth = 2;
 					scene.add(skeletonHelper);
-					if (start) {
-						start = false;
+					if (model_start) {
 						getInitQs();
+						model_start = false;
 					}
 				});
 			}
 
 			function updateBone(id, q) {
-				skeletonHelper.bones[bones[id]].quaternion.set(q.q1, q.q2, q.q3, q.q0);
-				//var newQ = new THREE.Quaternion(q.q1, q.q2, q.q3, q.q0);
+				//console.log("q1="+q.q1+" q2="+q.q2+" q3="+q.q3+" q0="+q.q0);
+				/*var w = q.q0 + initQs[id].w;
+				var x = q.q1 + initQs[id].x;
+				var y = q.q2 + initQs[id].y;
+				var z = q.q3 + initQs[id].z;
+				skeletonHelper.bones[bones[id]].quaternion.set(x, y, z, w);*/
+				
+				var raw_newQ = new THREE.Quaternion(q.q1, q.q2, q.q3, q.q0);
+				var newQ = raw_newQ.multiply(Q_OFFSET);
+				skeletonHelper.bones[bones[id]].quaternion.set(newQ.x, newQ.y, newQ.z, newQ.w);
                 //skeletonHelper.bones[bones[id]].applyQuaternion(newQ);
 			}
 
 			function resetBones() {
-				for (bone in initQs) {
-					q = initQs[bone];
-					console.log("reset q.w: "+q.w);
-					skeletonHelper.bones[bone].quaternion.set(q.x, q.y, q.z, q.w);
+				var i;
+				for (i = 0; i < initQs.length; i++) {
+					q = initQs[i];
+					//console.log("reset q.w: "+q.w);
+					skeletonHelper.bones[bones[i]].quaternion.set(q.x, q.y, q.z, q.w);
 				}
 
 				/*// relax shoulders
@@ -196,9 +207,14 @@
 				// store init positions
 				bones.forEach(function(bone) {
 					q = skeletonHelper.bones[bone].quaternion;
-					initQs[bone] = {x: q.x, y: q.y, z: q.z, w: q.w};
-					console.log("Init q.w: "+initQs[bone].w);
+					initQs.push({x: q.x, y: q.y, z: q.z, w: q.w});
+					//console.log("Init q.w: "+initQs[bone].w);
 				});
+				/*var i;
+				for (i = 0; i < bones.length; i++) {
+					q = skeletonHelper.bones[bones[i]].quaternion;
+					initQs[i] = {x: q.x, y: q.y, z: q.z, w: q.w};
+				}*/
 			}
 
 			function render(){
@@ -209,6 +225,14 @@
 			initScene();
 			render();
 
+			setInterval(function () {
+				if (app.streaming && app.quaternions.length > 0) {
+					var i;
+					for (i = 0; i < app.quaternions.length; i++) {
+						updateBone(i, app.quaternions[i]);
+					}
+				}
+			}, samplePeriod);
 
 		</script>
 	</body>
