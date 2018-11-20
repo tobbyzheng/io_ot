@@ -13,19 +13,14 @@ app.sleep = (milliseconds) => {
  * Timeout (ms) after which a message is shown if the SensorTag wasn't found.
  */
 app.CONNECT_TIMEOUT = 3000;
-//app.NUM_DEVICES = 1;
+//app.NUM_DEVICES = 5;
 app.TYPE_ACC = 0;
 app.TYPE_GYR = 1;
 app.TYPE_MAG = 2;
 app.DIAGRAM_SCALER = [2, 255, 300];
-app.quaternions = [];
-app.streaming = false;
-app.num_devices = 1;
 
-//app.mag_off = {};
-//app.mag_off.X = 15.0;
-//app.mag_off.Y = -90.0;
-//app.mag_off.Z = 170.0;
+app.streaming = false;
+app.num_devices = 5;
 
 // UUIDs for movement services and characteristics.
 app.cc2650 = {};
@@ -36,7 +31,8 @@ app.cc2650.MOVEMENT_PERIOD = 'f000aa83-0451-4000-b000-000000000000';
 app.cc2650.MOVEMENT_NOTIFICATION = '00002902-0000-1000-8000-00805f9b34fb';
 
 // var to_rad = (x) => {return x/360.0 * 3.1415926 * 2};
-app.to_rad = (x) => {return x/6.0};
+// app.to_rad = (x) => {return x/54.0};
+app.to_rad = (x) => {return x/57.295779513};
 
 /**
  * Initialise the application.
@@ -56,9 +52,9 @@ app.initialize = function()
 
 		// Adjust the canvas size when the document has loaded.
 		app.respondCanvas();
-		var slider = document.getElementById("numDeviceSlider");
-		var slider_label = document.getElementById("numDeviceLabel");
-		app.num_devices = slider.value;
+        var slider = document.getElementById("numDeviceSlider");
+        var slider_label = document.getElementById("numDeviceLabel");
+        app.num_devices = slider.value;
 		slider_label.innerText = slider.value;
 		slider.oninput = function() {
 			app.num_devices = slider.value;
@@ -74,15 +70,16 @@ app.reset_vars = function() {
 	app.avg_x = [];
 	app.avg_y = [];
 	app.avg_z = [];
+	app.avga_x = [];
+	app.avga_y = [];
+	app.avga_z = [];
 	app.gi = [];
 	app.lower = [];
+	app.ai = [];
 	app.higher = [];
 
-	app.quaternions = [];
-	app.streaming = false;
-	
-	app.mag_offset = [0, 0, 0];
-	app.count = 0;
+	app.quarternions = [];
+    app.streaming = false;
 }
 
 /**
@@ -181,10 +178,19 @@ app.startScan = function()
 						app.avg_x.push(0);
 						app.avg_y.push(0);
 						app.avg_z.push(0);
+						app.avga_x.push(0);
+						app.avga_y.push(0);
+						app.avga_z.push(0);
 						app.gi.push(0);
+						app.ai.push(0);
 						app.lower.push(10);
 						app.higher.push(51);
-						app.quaternions.push({q0: 1.0, q1: 0.0, q2: 0.0, q3: 0.0});
+                        // left: q1=-0.707
+                        // right: q1=0.707
+                        // body: q0 = 0.707, q1=0.707
+
+						// app.quarternions.push({q0: 0.707, q1: 0.707, q2: 0.0, q3: 0.0});
+
 						//app.sleep(500).then();
 						//start = new Date().getTime();
 						//console.log(i+" before: "+start);
@@ -192,6 +198,11 @@ app.startScan = function()
 						//console.log(i+" after: "+new Date().getTime());
 
 					}
+					app.quarternions.push({q0: 0.707, q1: 0.707, q2: 0.0, q3: 0.0});
+					app.quarternions.push({q0: 0.707, q1: 0.707, q2: 0.0, q3: 0.0});
+					app.quarternions.push({q0: 0.707, q1: -0.707, q2: 0.0, q3: 0.0});
+					app.quarternions.push({q0: 0.707, q1: -0.707, q2: 0.0, q3: 0.0});
+					app.quarternions.push({q0: 0.707, q1: 0.707, q2: 0.0, q3: 0.0});
 					//app.connectToDevice(app.cc2650.device);
 				}
 			}
@@ -271,7 +282,7 @@ app.startCC2650AccelerometerNotification = function(device)
 	// 3-axis acc. + 3-axis gyro + magnetometer on: 127 (1111111)
 	device.writeCharacteristic(
 		app.cc2650.MOVEMENT_CONFIG,
-		new Uint8Array([127,0]),
+		new Uint8Array([63,0]),
 		function()
 		{
 			console.log('Status: writeCharacteristic ok.');
@@ -318,43 +329,39 @@ app.startCC2650AccelerometerNotification = function(device)
 		app.cc2650.MOVEMENT_DATA,
 		function(data)
 		{
-			if (!app.streaming) {
+            if (!app.streaming) {
 				app.showInfo('Status: Data stream active... Please wait');
 			}
 			var dataArray = new Uint8Array(data);
 			
 			var id = device.index;
-			var acc_vals = app.getCC2650AccelerometerValues(dataArray);
+			var acc_vals = app.getCC2650AccelerometerValues(dataArray, id);
 			var gyr_vals = app.getCC2650GyroscopeValues(dataArray, id);
-			var mag_vals = app.getCC2650MagnetometerValues(dataArray);
+			// var mag_vals = app.getCC2650MagnetometerValues(dataArray);
+	        var mag_vals =  { x: 0, y: 0, z: 0 };
 			//madgwickAHRSupdateIMU(gyr_vals.x, gyr_vals.y, gyr_vals.z, 
 			//					acc_vals.x, acc_vals.y, acc_vals.z);
 
-			if (app.gi[id] < app.higher[id]) return;
-			//console.log("Device "+id+" : Got enough data for madgwick");
+			if (app.gi[id] < app.higher[id]) {
+                console.log(app.gi[id] + "/" + app.higher[id]);
+                return;   
+            }
+            if (!app.streaming) {
+                app.streaming = true;
+                app.showInfo("Status: Sensor fusion started");
+            }
+            //console.log("Device "+id+" : Got enough data for madgwick");
 			/*
 			console.log('gyr: '+gyr_vals.x+' '+gyr_vals.y+' '+gyr_vals.z); 
 			console.log('acc: '+acc_vals.x+' '+acc_vals.y+' '+acc_vals.z); 
 			console.log('mag: '+mag_vals.x+' '+mag_vals.y+' '+mag_vals.z);
 			*/
-
-			if (!app.streaming) {
-				/*if (model_start) return;
-				var q = initQs[id];
-				app.quaternions[id].q0 = q.w;
-				app.quaternions[id].q1 = q.x;
-				app.quaternions[id].q2 = q.y;
-				app.quaternions[id].q3 = q.z;*/
-				app.streaming = true;
-				app.showInfo("Status: Sensor fusion started");
-			}
-			madgwickAHRSupdateIMU(gyr_vals, acc_vals, app.quaternions[id]);
-			//madgwickAHRSupdate(app.quaternions[id], gyr_vals, acc_vals, mag_vals);
-			//if (q) {
-				//console.log("Device "+id+": q0="+q.q0+" q1="+q.q1+" q2="+q.q2+" q3="+q.q3);
-				//app.quaternions[id] = q;
-				//updateBone(id, q);
-			//}
+			var q = madgwickAHRSupdate(app.quarternions[id], gyr_vals, acc_vals, mag_vals);
+			// if (q) {
+			// 	console.log("Device "+id+": q0="+q.q0+" q1="+q.q1+" q2="+q.q2+" q3="+q.q3);
+            app.quarternions[id] = q;
+            updateBone(id, q);
+			// }
 
 			//app.drawDiagram(app.TYPE_ACC, acc_vals, device.index, app.cc2650.dataPoints);
 			//app.drawDiagram(app.TYPE_GYR, gyr_vals, device.index, app.cc2650.dataPoints);
@@ -372,23 +379,41 @@ app.startCC2650AccelerometerNotification = function(device)
  * @param data - an Uint8Array.
  * @return Object with fields: x, y, z.
  */
-app.getCC2650AccelerometerValues = function(data)
+app.getCC2650AccelerometerValues = function(data, id)
 {
-	var divisors = { x: -16384.0, y: 16384.0, z: -16384.0 };
+	var divisors = { x: 16384.0, y: 16384.0, z: 16384.0 };
 
 	// Calculate accelerometer values.
 	var ax = evothings.util.littleEndianToInt16(data, 6) / divisors.x;
 	var ay = evothings.util.littleEndianToInt16(data, 8) / divisors.y;
 	var az = evothings.util.littleEndianToInt16(data, 10) / divisors.z;
+
+	// if (app.ai[id] < app.higher[id]) {
+    //     //console.log(app.ai);
+    //     if (app.ai[id] < app.lower[id]) {
+    //         app.ai[id]++;
+	//         // return { x: gx, y: gy, z: gz }
+	//         return { x: 0, y: 0, z: 0}
+    //     }
+    //     app.avga_x[id] = ((app.ai[id] - app.lower[id]) * app.avga_x[id] + ax)/(app.ai[id] - app.lower[id] + 1);
+    //     app.avga_y[id] = ((app.ai[id] - app.lower[id]) * app.avga_y[id] + ay)/(app.ai[id] - app.lower[id] + 1);
+    //     app.avga_z[id] = ((app.ai[id] - app.lower[id]) * app.avga_z[id] + az)/(app.ai[id] - app.lower[id] + 1);
+    //     app.ai[id]++;
+    //     console.log("avgas for "+ id + "   " + app.avga_x[id] + " " + app.avga_y[id] + " " + app.avga_z[id]);
+	//     return { x: 0, y: 0, z: 0}
+    // }
 	// Return result.
+	// return { x: ax-app.avga_x[id],
+    //          y: ay-app.avga_y[id],
+    //          z: az-app.avga_z[id] };
 	return { x: ax, y: ay, z: az };
 };
 
 app.getCC2650GyroscopeValues = function(data, id) {
 	// Calculate gyroscope values.
-	var gx = evothings.util.littleEndianToInt16(data, 0) * 255.0 / 32768.0;
-	var gy = evothings.util.littleEndianToInt16(data, 2) * 255.0 / 32768.0;
-	var gz = evothings.util.littleEndianToInt16(data, 4) * 255.0 / 32768.0;
+	var gx = evothings.util.littleEndianToInt16(data, 0) * 250.0 / 32768.0;
+	var gy = evothings.util.littleEndianToInt16(data, 2) * 250.0 / 32768.0;
+	var gz = evothings.util.littleEndianToInt16(data, 4) * 250.0 / 32768.0;
 
 	if (app.gi[id] < app.higher[id]) {
         //console.log(app.gi);
@@ -405,6 +430,12 @@ app.getCC2650GyroscopeValues = function(data, id) {
     }
 
 	// Return result.
+	// return { x: gx-app.avg_x[id],
+    //          y: gy-app.avg_y[id],
+    //          z: gz-app.avg_z[id] };
+	// return { x: app.to_rad(gx),
+    //          y: app.to_rad(gy),
+    //          z: app.to_rad(gz) };
 	return { x: app.to_rad(gx-app.avg_x[id]),
              y: app.to_rad(gy-app.avg_y[id]),
              z: app.to_rad(gz-app.avg_z[id]) };
@@ -415,6 +446,10 @@ app.getCC2650MagnetometerValues = function(data) {
 	var mx = evothings.util.littleEndianToInt16(data, 12) * (4912.0 / 32768.0);
 	var my = evothings.util.littleEndianToInt16(data, 14) * (4912.0 / 32768.0);
 	var mz = evothings.util.littleEndianToInt16(data, 16) * (4912.0 / 32768.0);
+	// var mx = evothings.util.littleEndianToInt16(data, 12);
+	// var my = evothings.util.littleEndianToInt16(data, 14);
+	// var mz = evothings.util.littleEndianToInt16(data, 16);
+    // console.log(mx, my, mz);
 	/*
 	if (my > app.max_ax) {
 		app.max_ax = my;
@@ -424,29 +459,9 @@ app.getCC2650MagnetometerValues = function(data) {
 	}
 	console.log("max my="+app.max_ax);
 	console.log("min my="+app.min_ax);
-	*/
-
-	if (app.count < 300) {
-		app.mag_offset[0] += mx;
-		app.mag_offset[1] += my;
-		app.mag_offset[2] += mz;
-		app.count++;
-	} else {
-		app.count = 0;
-		ox = app.mag_offset[0] / 300;
-		oy = app.mag_offset[1] / 300;
-		oz = app.mag_offset[2] / 300;
-		//console.log("offset x="+ox);
-		//console.log("offset y="+oy);
-		//console.log("offset z="+oz);
-		app.mag_offset[0] = 0;
-		app.mag_offset[1] = 0;
-		app.mag_offset[2] = 0;
-	}
-
+	*/ 
 	// Return result.
 	return { x: mx, y: my, z: mz };
-	//return { x: mx-app.mag_off.X, y: my-app.mag_off.Y, z: mz-app.mag_off.Z };
 }
 
 /**
@@ -454,7 +469,6 @@ app.getCC2650MagnetometerValues = function(data) {
  * Values plotted are expected to be between -1 and 1
  * and in the form of objects with fields x, y, z.
  */
-/*
 app.drawDiagram = function(type, values, id, device_data)
 {
 	//console.log("Device "+id+" is drawing");
@@ -521,7 +535,6 @@ app.drawDiagram = function(type, values, id, device_data)
 	drawLine('y', '#0f0');
 	drawLine('z', '#00f');
 };
-*/
 
 // Initialize the app.
 app.initialize();
