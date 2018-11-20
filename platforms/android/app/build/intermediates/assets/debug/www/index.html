@@ -1,244 +1,309 @@
 <!DOCTYPE html>
 <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no,
+                    shrink-to-fit=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+        <title>Human Motion Tracker</title>
+        <style>
+         @import 'ui/css/evothings-app.css';
+         @import 'ui/css/style.css';
+        </style>
+        <script>
+         if (window.hyper && window.hyper.log) { console.log = hyper.log }
+        </script>
+        <script src="js/three.min.js"></script>
+        <script src="js/OrbitControls.js"></script>
+        <script src="cordova.js"></script>
+        <script src="libs/jquery/jquery.js"></script>
+        <script src="libs/evothings/evothings.js"></script>
+        <script src="libs/evothings/ui/ui.js"></script>
+        <script src="libs/evothings/easyble/easyble.js"></script>
+        <script src="app.js"></script>
+        <script src="MadgwickAHRS.js"></script>
+    </head>
+    <body ontouchstart="">
+        <h1>Human Motion Tracker</h1>
+        <div class="slidecontainer">
+            Number of Sensortags: <label id="numDeviceLabel"></label>
+            <input type="range" min="1" max="5" step="1" value="5" class="slider" id="numDeviceSlider">
+        </div>
+        
 
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, user-scalable=no,
-			shrink-to-fit=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
-	<title>Human Motion Tracker</title>
-	<style>
-		@import 'ui/css/evothings-app.css';
-			@import 'ui/css/style.css';
-		</style>
-	<script>
-		if (window.hyper && window.hyper.log) { console.log = hyper.log }
-	</script>
-	<script src="js/three.min.js"></script>
-	<script src="js/OrbitControls.js"></script>
-	<script src="cordova.js"></script>
-	<script src="libs/jquery/jquery.js"></script>
-	<script src="libs/evothings/evothings.js"></script>
-	<script src="libs/evothings/ui/ui.js"></script>
-	<script src="libs/evothings/easyble/easyble.js"></script>
-	<script src="app.js"></script>
-	<script src="MadgwickAHRS.js"></script>
-</head>
+        <button onclick="app.onStartButton()" class="green">START</button>
+        <button onclick="app.onStopButton()" class="red">STOP</button>
+        <br>
+        <p id="info">Not initialized</p>
 
-<body ontouchstart="">
-	<h1>Human Motion Tracker</h1>
+        <div id="human-robot" width=400></div>
+        <script>
+         // resize div
+         var canvas_div = $('#human-robot');
+         var container = $(canvas_div).parent();
+         max_width = $(container).innerWidth()-50;
+         $(canvas_div).css('width', max_width-50);
+         //console.log("container:"+max_width);
+         //console.log("div:"+$(canvas_div).innerWidth());*/
 
-	<div class="slidecontainer">
-		Number of Sensortags: <label id="numDeviceLabel"></label>
-		<input type="range" min="1" max="5" step="1" value="1" class="slider" id="numDeviceSlider">
-	</div>
-	<button onclick="app.onStartButton()" class="green">START</button>
-	<button onclick="app.onStopButton()" class="red">STOP</button>
-	<br>
-	<p id="info">Not initialized</p>
+         //var headerHeight = $('header').outerHeight();
+         var max_height = window.innerHeight - 180;
 
-	<div id="human-robot" width=400></div>
-	<!---<button id="fps_button" onClick="showFPS()">FPS</button>-->
-	<script>
-		// resize div
-		var canvas_div = $('#human-robot');
-		var container = $(canvas_div).parent();
-		var max_width = $(container).innerWidth() - 10;
-		$(canvas_div).css('width', max_width);
-		//console.log("container:"+max_width);
-		//console.log("div:"+$(canvas_div).innerWidth());*/
+         var scene, camera, renderer, orbit, lights, mesh, skeletonHelper;
+         var bones = [20, 39]; // upper arms
+         /*var state = {
+            animateBones : true
+            };*/
 
-		//var headerHeight = $('header').outerHeight();	
-		var max_height = window.innerHeight - 200; //- headerHeight;
+         function initScene () {
+             scene = new THREE.Scene();
+             scene.background = new THREE.Color(0);
+             camera = new THREE.PerspectiveCamera( 60, max_width / max_height, 1, 100000);
+             camera.position.set( 2000, 5000, 5000 );
+             var axesHelper = new THREE.AxesHelper( 5 );
+             scene.add( axesHelper );
 
-		//(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='js/stats.min.js';document.head.appendChild(script);})()
-		var scene, camera, renderer, orbit, lights, mesh, skeletonHelper;
-		var bones = [20, 39]; // upper arms
-		var initQs = [];
-		var model_start = true;
-		var samplePeriod = 1000 / sampleFreq;
-		//var Q_OFFSET = new THREE.Quaternion(-0.5, 0.5, -0.5, 0.5);
-		var Q_OFFSET = new THREE.Quaternion(0, 0, 0, 1);
-		//var Q_OFFSET = new THREE.Quaternion(0, 0, -Math.sqrt(2)/2.0, Math.sqrt(2)/2.0);
-		/*var state = {
-			animateBones : true
-		};*/
+             renderer = new THREE.WebGLRenderer({ antialias: true });
+             renderer.setPixelRatio(window.devicePixelRatio);
+             renderer.setSize( max_width, max_height);
+             renderer.setClearColor(0x000000, 1);
+             document.getElementById('human-robot').appendChild(renderer.domElement);
 
-		function initScene() {
-			scene = new THREE.Scene();
-			scene.background = new THREE.Color(0);
-			camera = new THREE.PerspectiveCamera(60, max_width / max_height, 1, 100000);
-			camera.position.set(2000, 5000, 5000);
+             orbit = new THREE.OrbitControls(camera, renderer.domElement);
+             orbit.enableZoom = true;
+             orbit.target.set( 0, 3000, 0 );
+             orbit.update();
+             //orbit.addEventListener( 'change', render );
 
-			renderer = new THREE.WebGLRenderer({ antialias: true });
-			renderer.setPixelRatio(window.devicePixelRatio);
-			renderer.setSize(max_width, max_height);
-			renderer.setClearColor(0x000000, 1);
-			document.getElementById('human-robot').appendChild(renderer.domElement);
+             lights = [];
+             lights[0] = new THREE.DirectionalLight( 0xffffff, 1 );
+             lights[1] = new THREE.PointLight( 0xffffff, 1, 0 );
 
-			orbit = new THREE.OrbitControls(camera, renderer.domElement);
-			orbit.enableZoom = true;
-			orbit.target.set(0, 3000, 0);
-			orbit.update();
-			//orbit.addEventListener( 'change', render );
+             lights[0].position.set( 0, 140, 500 );
+             lights[0].position.multiplyScalar( 1.1 );
+             lights[0].color.setHSL( 0.6, 0.075, 1 );
+             lights[1].position.set( 0, - 1, 0 );
 
-			lights = [];
-			lights[0] = new THREE.DirectionalLight(0xffffff, 1);
-			lights[1] = new THREE.PointLight(0xffffff, 1, 0);
+             scene.add(lights[0]);
+             scene.add(lights[1]);
 
-			lights[0].position.set(0, 140, 500);
-			lights[0].position.multiplyScalar(1.1);
-			lights[0].color.setHSL(0.6, 0.075, 1);
-			lights[1].position.set(0, - 1, 0);
+             initBones();
+         }
 
-			scene.add(lights[0]);
-			scene.add(lights[1]);
+         function initBones () {
 
-			/*
-			window.addEventListener('resize', function () {
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
-				renderer.setSize( window.innerWidth, window.innerHeight );
-			}, false );
-			*/
+             // try to load the character
+             var loader = new THREE.ObjectLoader();
+             loader.load("models/skinned/marine/marine_anims.json", function (loadedObject) {
+                 //geometry.computeBoundingBox();
+                 //geometry.computeVertexNormals();
+                 loadedObject.traverse(function(child) {
+                     if (child instanceof THREE.SkinnedMesh) {
+                         mesh = child;
+                     }
+                 });
+                 mesh.scale.set(30, 30, 30);
+                 mesh.scale.multiplyScalar(1);
+                 // var bb = geometry.boundingBox;
+                 // console.log(bb);
+                 //mesh.position.set(0, 0, 0);
+                 scene.add(mesh);
 
-			initBones();
-		}
+                 skeletonHelper = new THREE.SkeletonHelper(mesh);
+                 //skeletonHelper.material.linewidth = 2;
+                 scene.add(skeletonHelper);
+                 /* resetBones(); */
+                 /* skeletonHelper.bones[bones[1]].scale.x = -1; */
+                 /* skeletonHelper.bones[bones[1]].scale.y = -1; */
+                 /* skeletonHelper.bones[bones[1]].scale.z = -1; */
+             });
+         }
 
-		function initBones() {
-			//var segmentHeight = 8;
-			//var segmentCount = 4;
-			//var height = segmentHeight * segmentCount;
-			//var halfHeight = height * 0.5;
+         function onChangeBoneX() {
+             console.log(skeletonHelper.bones.length);
+             skeletonHelper.bones[21].rotation.x =  -Math.PI * 0.5;
+         }
+         function onChangeBoneY() {
+             console.log(skeletonHelper.bones.length);
+             skeletonHelper.bones[21].rotation.y = -Math.PI * 0.5;
+         }
 
-			//var sizing = {
-			//	segmentHeight : segmentHeight,
-			//	segmentCount : segmentCount,
-			//	height : height,
-			//	halfHeight : halfHeight
-			//};
+         function onChangeBoneZ() {
+             console.log(skeletonHelper.bones.length);
+             skeletonHelper.bones[21].rotation.z = -Math.PI * 0.5;
+         }
 
-			//var geometry = createGeometry( sizing );
-			//var bones = createBones(sizing);
-			//mesh = createMesh( geometry, bones );
+         function testQuaternion() {
+             console.log(skeletonHelper.bones[21].quaternion.x);
+             console.log(skeletonHelper.bones[21].quaternion.y);
+             console.log(skeletonHelper.bones[21].quaternion.z);
+             console.log(skeletonHelper.bones[21].quaternion.w);
 
-			/* Create mesh */
-			// var material = new THREE.MeshNormalMaterial({
-			// 		color: 0, //13359858,
-			// 		transparent: true,
-			// 		opacity: 1,
-			// 		specular: 10.0,
-			// 		skinning: true,
-			// 		morphTargets: true,
-			// 		wireframe: false
-			// });
+             var q1 = new THREE.Quaternion(0.1, -1, -0.2, -2);
+             console.log("q1"+q1);
+             console.log(skeletonHelper.bones[21]);
+             skeletonHelper.bones[21].applyQuaternion(q1);
+         }
 
-			// try to load the character
-			var loader = new THREE.ObjectLoader();
-			loader.load("models/skinned/marine/marine_anims.json", function (loadedObject) {
-				//geometry.computeBoundingBox();
-				//geometry.computeVertexNormals();
-				loadedObject.traverse(function (child) {
-					if (child instanceof THREE.SkinnedMesh) {
-						mesh = child;
-					}
-				});
-				//var mesh = new THREE.SkinnedMesh(geometry, material);
-				// var skeleton = new THREE.Skeleton(bones);
-				// mesh.add(bones[0]);
-				//mesh.bind(skeleton);
-				//mesh.rotation.y = - 135 * Math.PI / 180;
-				mesh.scale.set(30, 30, 30);
-				mesh.scale.multiplyScalar(1);
-				// var bb = geometry.boundingBox;
-				// console.log(bb);
-				//mesh.position.set(0, 0, 0);
-				scene.add(mesh);
+         function updateBone(id, q) {
+             var quaternion = new THREE.Quaternion();
+             if (q == undefined) return;
+             quaternion.set(q.q2,  -q.q3,  -q.q1, q.q0);
+             /* quaternion.set(-q.q2,  q.q3,  q.q1, q.q0); */
 
-				skeletonHelper = new THREE.SkeletonHelper(mesh);
-				//skeletonHelper.material.linewidth = 2;
-				scene.add(skeletonHelper);
-				if (model_start) {
-					getInitQs();
-					model_start = false;
-				}
-			});
-		}
+             /* console.log("id is " + id); */
+             /* var prev_q_inv = new THREE.Quaternion(); */
+             /* console.log("YYYYYYYYYYYYY dest is " + skeletonHelper.bones[bones[0] + id - 1].rotation.x); */
+             /* var euler = skeletonHelper.bones[bones[0] + id - 1].rotation; */
+             /* return; */
 
-		function updateBone(id, q) {
-			//console.log("q1="+q.q1+" q2="+q.q2+" q3="+q.q3+" q0="+q.q0);
-			/*var w = q.q0 + initQs[id].w;
-			var x = q.q1 + initQs[id].x;
-			var y = q.q2 + initQs[id].y;
-			var z = q.q3 + initQs[id].z;
-			skeletonHelper.bones[bones[id]].quaternion.set(x, y, z, w);*/
-			if (typeof q === "undefined") return;
+             /* if (id == 0) { */
+             /* } else { */
 
-			var raw_newQ = new THREE.Quaternion(q.q1, q.q2, q.q3, q.q0);
-			var newQ = new THREE.Quaternion().multiplyQuaternions(Q_OFFSET, raw_newQ);
-			skeletonHelper.bones[bones[id]].quaternion.set(newQ.x, newQ.y, newQ.z, newQ.w);
-			//skeletonHelper.bones[bones[id]].applyQuaternion(newQ);
-		}
+             /* skeletonHelper.bones[bones[0]].quaternion.set(0.383, 0, 0, 0.924); */
+             /* skeletonHelper.bones[bones[1]].scale.set(new THREE.Vector3(-1, -1, -1)); */
+             /* skeletonHelper.bones[bones[1]].scale.x = -1; */
+             /* skeletonHelper.bones[bones[1]].scale.y = -1; */
+             /* skeletonHelper.bones[bones[1]].scale.z = -1; */
+             /* skeletonHelper.bones[bones[id]].quaternion.set(q.q2, -q.q3, -q.q1, q.q0); */
+             /* skeletonHelper.bones[bones[1]].quaternion.set(0.383, 0, 0, 0.924); */
+             /* return; */
 
-		function resetBones() {
-			var i;
-			for (i = 0; i < initQs.length; i++) {
-				q = initQs[i];
-				//console.log("reset q.w: "+q.w);
-				skeletonHelper.bones[bones[i]].quaternion.set(q.x, q.y, q.z, q.w);
-			}
+             /* skeletonHelper.bones[bones[id]].scale.set(new THREE.Vector3(-1, 1, -1)); */
+             /* } */
+             if (id == 4) {
+                 skeletonHelper.bones[0].quaternion.set(q.q2,  q.q1,  q.q3, q.q0);
+                 skeletonHelper.bones[0].rotation.x = -3.14159/2;
+                 skeletonHelper.bones[0].rotation.y = 0;
+                 /* skeletonHelper.bones[0 + id].quaternion.set(q.q2,  -q.q3,   q.q1, q.q0); */
+                 return
+             }
 
-			/*// relax shoulders
-			skeletonHelper.bones[19].position.set(0, -3.1, -2.466);
-			skeletonHelper.bones[19].rotation.set(-1.9, -0.2, 3.14);
-			skeletonHelper.bones[38].position.set(0, 3.1, -2.466);
-			skeletonHelper.bones[38].rotation.set(1.9, -0.2, -3.14);
 
-			// put arms down
-			skeletonHelper.bones[20].position.set(2.1, 0, -16.3);
-			skeletonHelper.bones[20].rotation.set(1.2, -0.1, -0.25);
-			skeletonHelper.bones[39].position.set(2.1, 0, -16.3);
-			skeletonHelper.bones[39].rotation.set(-1.2, -0.1, 0.25);*/
-		}
+             // DONE dont MODIFY, Right Hand
+             if (id == 0 || id == 1) {
+                 var prev_q_inv = skeletonHelper.bones[bones[0]+id-1].getWorldQuaternion();
+                 var trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -3.1415926/2, 3.1415926, "YXZ"));
+                 prev_q_inv.inverse();
+                 prev_q_inv.multiply(trans);
+                 skeletonHelper.bones[bones[0] + id].quaternion.multiplyQuaternions(prev_q_inv, quaternion);
+                 return;
+                 // DONE don't modify
+             }
 
-		/*function showFPS() {
-			var fpsbutton = document.getElementById('fps_button');
-			var stat = new Stats();
-			var fps = stat.getFPS();
-			fpsbutton.innerHTML = "FPS="+fps;
-		}*/
+             if (id == 2 || id == 3) {
+                 var prev_q_inv = skeletonHelper.bones[bones[1]+id - 3].getWorldQuaternion();
+                 var trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0,  3.1415926/2, 3.1415926, "YXZ"));
+                 prev_q_inv.inverse();
+                 prev_q_inv.multiply(trans);
+                 skeletonHelper.bones[bones[1] + id - 2].quaternion.multiplyQuaternions(prev_q_inv, quaternion);
+                 return;
+                 // DONE don't modify
+             }
 
-		function getInitQs() {
-			// store init positions
-			bones.forEach(function (bone) {
-				q = skeletonHelper.bones[bone].quaternion;
-				initQs.push({ x: q.x, y: q.y, z: q.z, w: q.w });
-				//console.log("Init q.w: "+initQs[bone].w);
-			});
-			/*var i;
-			for (i = 0; i < bones.length; i++) {
-				q = skeletonHelper.bones[bones[i]].quaternion;
-				initQs[i] = {x: q.x, y: q.y, z: q.z, w: q.w};
-			}*/
-		}
 
-		function render() {
-			requestAnimationFrame(render);
-			renderer.render(scene, camera);
-			//var time = Date.now() * 0.001;
-		}
-		initScene();
-		render();
+             /* var trans; */
+             /* if (id == 0) { */
+             /* skeletonHelper.bones[bones[1] + id].quaternion.set(-q.q2,  q.q3,  q.q1, q.q0); */
+             /* trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -3.1415926/2, 3.1415926, "YXZ")); */
+             /* skeletonHelper.bones[bones[1] + id].scale.y = -1; */
+             /* } */
+             /* trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -3.1415926*2, 3.1415926, "YXZ")); */
+             /* else { */
+             /* trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 3.1415926, "YXZ")); */
+             /* trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 3.1415926, "YXZ")); */
+             /* trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 3.1415926, "YXZ")); */
 
-		setInterval(function () {
-			if (app.streaming && app.quaternions.length > 0) {
-				var i;
-				for (i = 0; i < app.quaternions.length; i++) {
-					updateBone(i, app.quaternions[i]);
-				}
-			}
-		}, samplePeriod);
+             /* trans.multiply(prev_q_inverse); */
+             /* skeletonHelper.bones[bones[1] + id].quaternion.multiplyQuaternions(trans, quaternion); */
+             /* skeletonHelper.bones[bones[1] + id].scale.x = -1; */
+             /* } */
 
-	</script>
-</body>
+             /* var prev_q_inv = skeletonHelper.bones[bones[id]-1].getWorldQuaternion(); */
+             /* var trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -3.1415926/2, 3.1415926, "YXZ")); */
+             /* prev_q_inv.inverse(); */
+             /* prev_q_inv.multiply(trans); */
+             /* skeletonHelper.bones[bones[id]].quaternion.multiplyQuaternions(prev_q_inv, quaternion); */
 
+             /* var rotation = new THREE.Euler().setFromQuaternion( prev_q_inv, "XYZ" ); */
+             /* console.log("PPPPPPPPPPPPP"); */
+             /* skeletonHelper.bones[bones[id]].quaternion.multiplyQuaternions(prev_q_inv, quaternion); */
+             return;
+
+
+             var prev_q_inv = skeletonHelper.bones[bones[1] + id - 1].getWorldQuaternion();
+             prev_q_inv.inverse();
+
+             /* console.log("qqqqqqqqqqqq"); */
+             if (id == 0)
+                 /* skeletonHelper.bones[bones[0] + id].quaternion.multiplyQuaternions(prev_q_inv, quaternion); */
+                 skeletonHelper.bones[bones[1] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0);
+             else {
+                 /* var trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -3.1415926/2, 3.1415926, "YXZ")); */
+                 /* var trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -3.1415926/2, 0, "YXZ")); */
+                 /* prev_q_inv.multiply(trans); */
+                 skeletonHelper.bones[bones[1] + id].quaternion.multiplyQuaternions(prev_q_inv, quaternion);
+                 /* skeletonHelper.bones[bones[0] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0); */
+                 /* var t_q = prev_q_inv.multiply(quaternion); */
+                 /* skeletonHelper.bones[bones[0] + id].applyMatrix(new THREE.Matrix4().compose(new THREE.Vector3(0, 0, 0), t_q, new THREE.Vector3(1, -1, 1))); */
+                 /* skeletonHelper.bones[bones[0] + id].rotateY( -3.14169  / 2); */
+                 /* skeletonHelper.bones[bones[0] + id].scale.set(new THREE.Vector3(1, -1, 1)); */
+             }
+             /* var r = skeletonHelper.bones[bones[0] + id].rotation; */
+             /* skeletonHelper.bones[bones[0] + id].rotation.set(r.x-rotation.x, r.y-rotation.y, r.z-rotation.z, "XYZ"); */
+             /* skeletonHelper.bones[bones[0] + id].rotateX(MATH.PI / 4); */
+             /* skeletonHelper.bones[bones[0] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0); */
+             /* var curr = skeletonHelper.bones[bones[0] + id].rotation; */
+             /* skeletonHelper.bones[bones[0] + id].rotation.set(curr.x - euler.x, curr.y - euler.y, curr.z - euler.z, "XYZ"); */
+             /* skeletonHelper.bones[bones[0] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0); */
+
+             /* console.log(q.q1 + " " + q.q2 + " " + q.q3 + " " + q.q0); */
+             /* skeletonHelper.bones[bones[id]].quaternion.set(  -0.5, -0.5, 0.5 , 0.5); */
+             /* skeletonHelper.bones[bones[id]].quaternion.multiply(quaternion); */
+             /* var quaternion = new THREE.Quaternion(); */
+             /* quaternion.set(  -0.5, -0.5, 0.5 , -0.5); */
+
+             /* var quaternion2 = new THREE.Quaternion(); */
+             /* quaternion2.set(q.q1, q.q2, q.q3, q.q0); */
+             /* quaternion2.multiply(quaternion); */
+
+             /* skeletonHelper.bones[bones[id]].quaternion.set(q.q1, q.q2, q.q3, q.q0); */
+             /* skeletonHelper.bones[bones[id]].quaternion.multiply(quaternion); */
+             //var newQ = new THREE.Quaternion(q.q1, q.q2, q.q3, q.q0);
+             //skeletonHelper.bones[bones[id]].applyQuaternion(newQ);
+         }
+
+/*
+         function resetBones() {
+             // relax shoulders
+             skeletonHelper.bones[19].quaternion = THREE.Quaternion();
+             skeletonHelper.bones[19].position.set(0, -3.1, -2.466);
+             skeletonHelper.bones[19].rotation.set(0, 0, 0, "XYZ");
+
+             skeletonHelper.bones[38].position.set(0, 3.1, -2.466);
+             skeletonHelper.bones[38].rotation.set(1.9, -0.2, -3.14);
+
+             // put arms down
+             skeletonHelper.bones[20].position.set(2.1, 0, -16.3);
+             skeletonHelper.bones[20].rotation.set(1.2, -0.1, -0.25);
+             skeletonHelper.bones[39].position.set(2.1, 0, -16.3);
+             skeletonHelper.bones[39].rotation.set(-1.2, -0.1, 0.25);
+
+         }
+*/
+         /*function showFPS() {
+            var fpsbutton = document.getElementById('fps_button');
+            var stat = new Stats();
+            var fps = stat.getFPS();
+            fpsbutton.innerHTML = "FPS="+fps;
+            }*/
+
+         function render(){
+             requestAnimationFrame(render);
+             renderer.render( scene, camera );
+             //var time = Date.now() * 0.001;
+         }
+         initScene();
+         render();
+        </script>
+    </body>
 </html>

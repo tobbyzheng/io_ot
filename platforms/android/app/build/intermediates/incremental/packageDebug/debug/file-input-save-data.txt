@@ -1,5 +1,5 @@
 #Internal package file, do not edit.
-#Tue Nov 20 23:23:27 AEDT 2018
+#Tue Nov 20 23:57:36 AEDT 2018
 5.base=/Users/Yi/EvothingsStudio/MyApps/body_motion/platforms/android/app/build/intermediates/assets/debug
 42.base=/Users/Yi/EvothingsStudio/MyApps/body_motion/platforms/android/app/build/intermediates/assets/debug
 22.path=www/libs/jquery/jquery.js
