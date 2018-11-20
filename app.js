@@ -13,7 +13,7 @@ app.sleep = (milliseconds) => {
  * Timeout (ms) after which a message is shown if the SensorTag wasn't found.
  */
 app.CONNECT_TIMEOUT = 3000;
-app.NUM_DEVICES = 1;
+app.NUM_DEVICES = 2;
 app.TYPE_ACC = 0;
 app.TYPE_GYR = 1;
 app.TYPE_MAG = 2;

@@ -108,7 +108,7 @@ function madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az, q) {
 
 function madgwickAHRSupdate(q, g, a, m) {
     var gx =   -g.y, gy =   g.x, gz =    g.z;
-    var ax =   -a.y, ay =   a.x, az =    a.z;
+    var ax =   -a.y, ay =   a.x, az =   a.z;
     return madgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az, q);
     var mx =   m.x, my =   m.z , mz =   m.y;
     var q0 = q.q0, q1 = q.q1, q2 = q.q2, q3 = q.q3; 

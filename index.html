@@ -45,8 +45,8 @@
 			// resize div
 			var canvas_div = $('#human-robot');
 			var container = $(canvas_div).parent();
-			max_width = $(container).innerWidth()-10;
-			$(canvas_div).css('width', max_width);
+			max_width = $(container).innerWidth()-50;
+			$(canvas_div).css('width', max_width-200);
 			//console.log("container:"+max_width);
 			//console.log("div:"+$(canvas_div).innerWidth());*/
   
@@ -65,6 +65,8 @@
 				scene.background = new THREE.Color(0);
 				camera = new THREE.PerspectiveCamera( 60, max_width / max_height, 1, 100000);
 				camera.position.set( 2000, 5000, 5000 );
+                var axesHelper = new THREE.AxesHelper( 5 );
+                scene.add( axesHelper );
 
 				renderer = new THREE.WebGLRenderer({ antialias: true });
 				renderer.setPixelRatio(window.devicePixelRatio);
@@ -185,19 +187,39 @@
 			}
 			
 			function updateBone(id, q) {
-                /* var quaternion = new THREE.Quaternion(); */
+                var quaternion = new THREE.Quaternion();
                 if (q == undefined) return;
-                /* quaternion.set(q.q2, -q.q3, -q.q1, q.q0); */
+                quaternion.set(q.q2, -q.q3, -q.q1, q.q0);
 
                 /* console.log("id is " + id); */
                 /* var prev_q_inv = new THREE.Quaternion(); */
-                /* console.log("YYYYYYYYYYYYY dest is " + skeletonHelper.bones[bones[0] + id - 1].quaternion.x); */
-				/* prev_q_inv = skeletonHelper.bones[bones[0] + id - 1].quaternion.copy(); */
+                /* console.log("YYYYYYYYYYYYY dest is " + skeletonHelper.bones[bones[0] + id - 1].rotation.x); */
+                /* var euler = skeletonHelper.bones[bones[0] + id - 1].rotation; */
+				var prev_q_inv = skeletonHelper.bones[bones[0] + id - 1].getWorldQuaternion();
+                /* var rotation = new THREE.Euler().setFromQuaternion( prev_q_inv, "XYZ" ); */
                 /* console.log("PPPPPPPPPPPPP"); */
-                /* prev_q_inv.inverse(); */
+                prev_q_inv.inverse();
                 /* console.log("qqqqqqqqqqqq"); */
-				/* skeletonHelper.bones[bones[0] + id].quaternion.multiplyQuaternions(prev_q_inv, quaternion); */
-				skeletonHelper.bones[bones[0] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0);
+                if (id == 0)
+                    /* skeletonHelper.bones[bones[0] + id].quaternion.multiplyQuaternions(prev_q_inv, quaternion); */
+                    skeletonHelper.bones[bones[0] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0);
+                else {
+                    var trans = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -3.1415926/2, 3.1415926, "YXZ"));
+                    prev_q_inv.multiply(trans);
+                    skeletonHelper.bones[bones[0] + id].quaternion.multiplyQuaternions(prev_q_inv, quaternion);
+                    /* skeletonHelper.bones[bones[0] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0); */
+                    /* var t_q = prev_q_inv.multiply(quaternion); */
+                    /* skeletonHelper.bones[bones[0] + id].applyMatrix(new THREE.Matrix4().compose(new THREE.Vector3(0, 0, 0), t_q, new THREE.Vector3(1, -1, 1))); */
+                    /* skeletonHelper.bones[bones[0] + id].rotateY( -3.14169  / 2); */
+                    /* skeletonHelper.bones[bones[0] + id].scale.set(new THREE.Vector3(1, -1, 1)); */
+                }
+                /* var r = skeletonHelper.bones[bones[0] + id].rotation; */
+                /* skeletonHelper.bones[bones[0] + id].rotation.set(r.x-rotation.x, r.y-rotation.y, r.z-rotation.z, "XYZ"); */
+                /* skeletonHelper.bones[bones[0] + id].rotateX(MATH.PI / 4); */
+                /* skeletonHelper.bones[bones[0] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0); */
+                /* var curr = skeletonHelper.bones[bones[0] + id].rotation; */
+                /* skeletonHelper.bones[bones[0] + id].rotation.set(curr.x - euler.x, curr.y - euler.y, curr.z - euler.z, "XYZ"); */
+				/* skeletonHelper.bones[bones[0] + id].quaternion.set(q.q2, -q.q3, -q.q1, q.q0); */
 
                 /* console.log(q.q1 + " " + q.q2 + " " + q.q3 + " " + q.q0); */
 				/* skeletonHelper.bones[bones[id]].quaternion.set(  -0.5, -0.5, 0.5 , 0.5); */
@@ -218,9 +240,10 @@
 			function resetBones() {
 				// relax shoulders
 				skeletonHelper.bones[19].quaternion = THREE.Quaternion();
-				skeletonHelper.bones[19].quaternion.set(1, 0, 0, 0);
+				/* skeletonHelper.bones[19].quaternion.set(1, 0, 0, 0); */
 				skeletonHelper.bones[19].position.set(0, -3.1, -2.466);
-				skeletonHelper.bones[19].rotation.set(-1.9, -0.2, 3.14);
+				skeletonHelper.bones[19].rotation.set(0, 0, 0, "XYZ");
+				/* skeletonHelper.bones[19].rotation.set(-1.9, -0.2, 3.14); */
 
 				skeletonHelper.bones[38].position.set(0, 3.1, -2.466);
 				skeletonHelper.bones[38].rotation.set(1.9, -0.2, -3.14);
