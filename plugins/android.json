@@ -1,0 +1,24 @@
+{
+  "prepare_queue": {
+    "installed": [],
+    "uninstalled": []
+  },
+  "config_munge": {
+    "files": {}
+  },
+  "installed_plugins": {
+    "cordova-plugin-ble": {
+      "PACKAGE_NAME": "au.edu.unsw.cse.ioot.bodymotion"
+    },
+    "cordova-plugin-console": {
+      "PACKAGE_NAME": "au.edu.unsw.cse.ioot.bodymotion"
+    },
+    "cordova-plugin-device": {
+      "PACKAGE_NAME": "au.edu.unsw.cse.ioot.bodymotion"
+    },
+    "cordova-plugin-whitelist": {
+      "PACKAGE_NAME": "au.edu.unsw.cse.ioot.bodymotion"
+    }
+  },
+  "dependent_plugins": {}
+}

@@ -1,0 +1,32 @@
+{
+  "name": "body_motion",
+  "version": "1.4.0",
+  "title": "Body Motion Sensors",
+  "description": "This app tracks body motion by connecting with TI SensorTag CC2561 using BLE ",
+  "tags": [
+    {
+      "label": "ti-sensortag",
+      "type": "platform"
+    },
+    {
+      "label": "ble",
+      "type": "comm"
+    }
+  ],
+  "libraries": [
+    {
+      "name": "jquery",
+      "version": "2.1.1"
+    }
+  ],
+  "index-file": "index.html",
+  "uuid": "4187d20c-b61c-4b2a-b633-ab9516d890c8",
+  "icon": "app-icon.png",
+  "doc-url": "https://evothings.com/2.1/doc/examples/ble-ti-sensortag-cc2541-demo.html",
+  "plugins": [],
+  "long-description": "This app tracks body motion by connecting with TI SensorTag CC2561 using BLE ",
+  "author-name": "Io_oT",
+  "author-email": "",
+  "author-url": "",
+  "cordova-id": "au.edu.unsw.cse.ioot.bodymotion"
+}
